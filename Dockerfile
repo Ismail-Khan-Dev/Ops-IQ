@@ -4,7 +4,7 @@
 # Build with: DOCKER_BUILDKIT=1 docker build .
 
 # ── Builder Stage ──────────────────────────────────────────
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 LABEL maintainer="Ismail-2001" \
       description="OpsIQ — Autonomous Ecommerce Operations Engine" \
@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install --user -r requirements.txt
 
 # ── Runtime Stage ──────────────────────────────────────────
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
