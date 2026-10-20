@@ -26,6 +26,12 @@ def build_payload_and_evidence(d, reviews_data: List[Dict]) -> tuple:
     identities or invented metrics are emitted.
     """
     if d.agent_id in ("FraudAgent", "fraud"):
+        action_type_str = getattr(d, "action_type", "")
+        rec_action = (
+            "release"
+            if "RELEASE" in str(action_type_str).upper()
+            else "hold"
+        )
         payload = {
             "order_id": d.action_data.get("order_id", "ORD-UNKNOWN"),
             "customer_name": d.action_data.get("customer_name") or UNKNOWN,
@@ -35,7 +41,8 @@ def build_payload_and_evidence(d, reviews_data: List[Dict]) -> tuple:
             "risk_signals": d.action_data.get("risk_factors")
             or d.action_data.get("risk_signals")
             or [],
-            "recommended_action": "hold",
+            "recommended_action": rec_action,
+            "hold_reason": "high_risk_of_fraud",
         }
         risk_value = (
             f"{payload['fraud_score']:.0f}/100" if payload["fraud_score"] is not None else UNKNOWN
@@ -55,6 +62,12 @@ def build_payload_and_evidence(d, reviews_data: List[Dict]) -> tuple:
                 "value": signals_value,
                 "weight": "supporting",
                 "source": "FraudAgent",
+            },
+            {
+                "label": "3PL Intercept",
+                "value": "Fulfillment Orders Hold" if rec_action == "hold" else "Fulfillment Release",
+                "weight": "supporting",
+                "source": "ShopifyFulfillmentAPI",
             },
         ]
         return payload, evidence

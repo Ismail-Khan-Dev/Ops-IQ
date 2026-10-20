@@ -267,6 +267,87 @@ class ShopifyClient:
             json={"fulfillment": fulfillment_data},
         )
 
+    # ── Fulfillment Orders & 3PL Holds ──────────────────────
+
+    async def get_fulfillment_orders(self, order_id: str) -> Dict:
+        """Get fulfillment orders for an order (Shopify modern fulfillment API)."""
+        return await self._get_with_retry(f"/orders/{order_id}/fulfillment_orders.json")
+
+    async def hold_fulfillment_order(
+        self,
+        fulfillment_order_id: str,
+        reason: str = "high_risk_of_fraud",
+        reason_notes: str = "OpsIQ 3PL Interceptor: High fraud risk detected.",
+    ) -> Dict:
+        """Place a fulfillment order on hold to prevent 3PL warehouse picking/dispatch.
+
+        Valid Shopify reasons: 'high_risk_of_fraud', 'awaiting_payment',
+        'incorrect_address', 'inventory_out_of_stock', 'other'.
+        """
+        payload = {
+            "fulfillment_hold": {
+                "reason": reason,
+                "reason_notes": reason_notes,
+            }
+        }
+        return await self._post_with_retry(
+            f"/fulfillment_orders/{fulfillment_order_id}/hold.json",
+            json=payload,
+        )
+
+    async def release_fulfillment_order_hold(self, fulfillment_order_id: str) -> Dict:
+        """Release a hold on a fulfillment order, allowing 3PL warehouse fulfillment."""
+        return await self._post_with_retry(
+            f"/fulfillment_orders/{fulfillment_order_id}/release_hold.json",
+            json={},
+        )
+
+    async def hold_order_fulfillments(
+        self,
+        order_id: str,
+        reason: str = "high_risk_of_fraud",
+        reason_notes: str = "OpsIQ 3PL Interceptor: High fraud risk detected.",
+    ) -> List[Dict]:
+        """Fetch all eligible fulfillment orders for an order and apply holds.
+
+        Returns a list of action reports for each fulfillment order found.
+        """
+        data = await self.get_fulfillment_orders(str(order_id))
+        fulfillment_orders = data.get("fulfillment_orders", [])
+        held = []
+        for fo in fulfillment_orders:
+            status = fo.get("status")
+            fo_id = str(fo.get("id"))
+            if status == "on_hold":
+                logger.info("FulfillmentOrder %s is already on_hold", fo_id)
+                held.append({"fulfillment_order_id": fo_id, "status": "on_hold", "already_held": True})
+                continue
+            if status in ("open", "in_progress", "scheduled"):
+                res = await self.hold_fulfillment_order(
+                    fo_id, reason=reason, reason_notes=reason_notes
+                )
+                held.append({"fulfillment_order_id": fo_id, "status": "on_hold", "response": res})
+        return held
+
+    async def release_order_fulfillments(self, order_id: str) -> List[Dict]:
+        """Fetch all on-hold fulfillment orders for an order and release holds.
+
+        Returns a list of action reports for each released fulfillment order.
+        """
+        data = await self.get_fulfillment_orders(str(order_id))
+        fulfillment_orders = data.get("fulfillment_orders", [])
+        released = []
+        for fo in fulfillment_orders:
+            status = fo.get("status")
+            fo_id = str(fo.get("id"))
+            if status == "on_hold":
+                res = await self.release_fulfillment_order_hold(fo_id)
+                released.append({"fulfillment_order_id": fo_id, "status": "released", "response": res})
+            elif status == "open":
+                logger.info("FulfillmentOrder %s is already open", fo_id)
+                released.append({"fulfillment_order_id": fo_id, "status": "open", "already_released": True})
+        return released
+
     # ── Checkouts (Abandoned Cart) ──────────────────────────
 
     async def get_checkouts(self, limit: int = 50) -> Dict:

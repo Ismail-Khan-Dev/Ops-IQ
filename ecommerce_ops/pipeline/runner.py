@@ -262,6 +262,8 @@ async def fetch_shopify_data(
 
 DECISION_TYPE_MAP = {
     "HOLD_ORDER": "fraud_hold",
+    "RELEASE_HOLD": "release_fraud_hold",
+    "RELEASE_ORDER_HOLD": "release_fraud_hold",
     "DRAFT_PO": "purchase_order",
     "UPDATE_PRICE": "price_change",
     "POST_REVIEW_RESPONSE": "review_response",
@@ -281,7 +283,8 @@ DECISION_TYPE_MAP = {
 # from the tool-permission matrix; rule-based agents use their PascalCase
 # names. The check is enforced in execute_shop_action before any live call.
 ACTION_TYPE_AGENT_ALLOWLIST: dict[str, set[str]] = {
-    "fraud_hold": {"FraudAgent", "fraud_detection", "fraud"},
+    "fraud_hold": {"FraudAgent", "fraud_detection", "fraud", "manual_operator", "system"},
+    "release_fraud_hold": {"FraudAgent", "fraud_detection", "fraud", "manual_operator", "system"},
     "purchase_order": {"InventoryAgent", "inventory_management", "inventory"},
     "price_change": {
         "PricingAgent",
@@ -395,9 +398,77 @@ async def execute_shop_action(action: ApprovalAction) -> tuple[bool, str]:
             order_id = payload.get("order_id") or payload.get("id")
             if not order_id or not str(order_id).isdigit():
                 return False, "fraud_hold requires a real Shopify order_id"
-            await client.update_order(str(order_id), {"tags": ["FRAUD_HOLD"]})
-            logger.info("Applied FRAUD_HOLD to order %s", order_id)
-            return True, f"Applied FRAUD_HOLD to order {order_id}"
+
+            # 1. Update order tags on Shopify for merchant visibility
+            existing_tags_str = ""
+            try:
+                current_order = await client.get_order(str(order_id))
+                existing_tags_str = current_order.get("order", {}).get("tags", "")
+            except Exception as e:
+                logger.warning("Could not fetch order %s tags: %s", order_id, e)
+
+            tags_list = [t.strip() for t in existing_tags_str.split(",") if t.strip()]
+            if "FRAUD_HOLD" not in tags_list:
+                tags_list.append("FRAUD_HOLD")
+            await client.update_order(str(order_id), {"tags": ", ".join(tags_list)})
+
+            # 2. 3PL Interceptor: Hold fulfillment orders to prevent warehouse picking
+            notes = (
+                payload.get("reason_notes")
+                or f"OpsIQ Fraud Interceptor: Hold placed for risk assessment (Score: {payload.get('fraud_score', 'High')})"
+            )
+            reason = payload.get("hold_reason") or "high_risk_of_fraud"
+            held_results = await client.hold_order_fulfillments(
+                str(order_id),
+                reason=reason,
+                reason_notes=notes,
+            )
+            held_count = len(held_results)
+            logger.info(
+                "Applied FRAUD_HOLD to order %s and intercepted %d 3PL fulfillment order(s)",
+                order_id,
+                held_count,
+            )
+            return (
+                True,
+                f"Applied FRAUD_HOLD to order {order_id} and intercepted {held_count} fulfillment order(s)",
+            )
+
+        if action.action_type == "release_fraud_hold":
+            order_id = payload.get("order_id") or payload.get("id")
+            if not order_id or not str(order_id).isdigit():
+                return False, "release_fraud_hold requires a real Shopify order_id"
+
+            # 1. Release fulfillment orders so 3PL warehouse can fulfill
+            released_results = await client.release_order_fulfillments(str(order_id))
+            released_count = len(released_results)
+
+            # 2. Update tags: remove FRAUD_HOLD and tag FRAUD_CLEARED
+            existing_tags_str = ""
+            try:
+                current_order = await client.get_order(str(order_id))
+                existing_tags_str = current_order.get("order", {}).get("tags", "")
+            except Exception as e:
+                logger.warning("Could not fetch order %s tags: %s", order_id, e)
+
+            tags_list = [
+                t.strip()
+                for t in existing_tags_str.split(",")
+                if t.strip() and t.strip() != "FRAUD_HOLD"
+            ]
+            if "FRAUD_CLEARED" not in tags_list:
+                tags_list.append("FRAUD_CLEARED")
+            await client.update_order(str(order_id), {"tags": ", ".join(tags_list)})
+
+            logger.info(
+                "Released FRAUD_HOLD for order %s and unblocked %d 3PL fulfillment order(s)",
+                order_id,
+                released_count,
+            )
+            return (
+                True,
+                f"Released FRAUD_HOLD for order {order_id} and unblocked {released_count} fulfillment order(s)",
+            )
 
         if action.action_type == "price_change":
             sku = payload.get("sku")

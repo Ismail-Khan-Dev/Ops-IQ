@@ -303,3 +303,126 @@ async def list_shopify_orders(
         return response
     finally:
         await client.close()
+
+
+# ── 3PL Fulfillment Order Interception ─────────────────────
+
+
+class HoldFulfillmentRequest(BaseModel):
+    reason: str = "high_risk_of_fraud"
+    reason_notes: str = "OpsIQ 3PL Interceptor Hold"
+
+
+@router.get("/orders/{order_id}/fulfillment-orders")
+async def get_shopify_fulfillment_orders(
+    order_id: str,
+    _: User = Depends(require_permission(Permission.SHOPIFY_VIEW)),
+):
+    """Get Shopify fulfillment orders for an order (3PL tracking)."""
+    from ecommerce_ops.config import settings as app_settings
+
+    if not app_settings.SHOPIFY_SHOP_DOMAIN or not app_settings.SHOPIFY_ACCESS_TOKEN:
+        raise HTTPException(status_code=400, detail="Shopify not configured")
+
+    access_token = app_settings.SHOPIFY_ACCESS_TOKEN.get_secret_value()
+    client = ShopifyClient(
+        shop_domain=app_settings.SHOPIFY_SHOP_DOMAIN,
+        access_token=access_token,
+        api_version=app_settings.SHOPIFY_API_VERSION,
+    )
+    try:
+        return await client.get_fulfillment_orders(order_id)
+    finally:
+        await client.close()
+
+
+@router.post("/orders/{order_id}/hold-fulfillment")
+async def hold_shopify_order_fulfillment(
+    order_id: str,
+    body: HoldFulfillmentRequest = HoldFulfillmentRequest(),
+    _: User = Depends(require_permission(Permission.SHOPIFY_CONFIGURE)),
+):
+    """Place 3PL fulfillment orders on hold to prevent warehouse dispatch."""
+    from ecommerce_ops.config import settings as app_settings
+
+    if not app_settings.SHOPIFY_SHOP_DOMAIN or not app_settings.SHOPIFY_ACCESS_TOKEN:
+        raise HTTPException(status_code=400, detail="Shopify not configured")
+
+    access_token = app_settings.SHOPIFY_ACCESS_TOKEN.get_secret_value()
+    client = ShopifyClient(
+        shop_domain=app_settings.SHOPIFY_SHOP_DOMAIN,
+        access_token=access_token,
+        api_version=app_settings.SHOPIFY_API_VERSION,
+    )
+    try:
+        # 1. Update tag
+        existing_tags = ""
+        try:
+            order_resp = await client.get_order(order_id)
+            existing_tags = order_resp.get("order", {}).get("tags", "")
+        except Exception:
+            pass
+        tags_list = [t.strip() for t in existing_tags.split(",") if t.strip()]
+        if "FRAUD_HOLD" not in tags_list:
+            tags_list.append("FRAUD_HOLD")
+        await client.update_order(order_id, {"tags": ", ".join(tags_list)})
+
+        # 2. Hold fulfillment orders
+        held = await client.hold_order_fulfillments(
+            order_id, reason=body.reason, reason_notes=body.reason_notes
+        )
+        return {
+            "order_id": order_id,
+            "status": "held",
+            "held_count": len(held),
+            "fulfillment_orders": held,
+        }
+    finally:
+        await client.close()
+
+
+@router.post("/orders/{order_id}/release-fulfillment")
+async def release_shopify_order_fulfillment(
+    order_id: str,
+    _: User = Depends(require_permission(Permission.SHOPIFY_CONFIGURE)),
+):
+    """Release 3PL fulfillment hold, unblocking warehouse picking."""
+    from ecommerce_ops.config import settings as app_settings
+
+    if not app_settings.SHOPIFY_SHOP_DOMAIN or not app_settings.SHOPIFY_ACCESS_TOKEN:
+        raise HTTPException(status_code=400, detail="Shopify not configured")
+
+    access_token = app_settings.SHOPIFY_ACCESS_TOKEN.get_secret_value()
+    client = ShopifyClient(
+        shop_domain=app_settings.SHOPIFY_SHOP_DOMAIN,
+        access_token=access_token,
+        api_version=app_settings.SHOPIFY_API_VERSION,
+    )
+    try:
+        # 1. Release fulfillment orders
+        released = await client.release_order_fulfillments(order_id)
+
+        # 2. Update tags
+        existing_tags = ""
+        try:
+            order_resp = await client.get_order(order_id)
+            existing_tags = order_resp.get("order", {}).get("tags", "")
+        except Exception:
+            pass
+        tags_list = [
+            t.strip()
+            for t in existing_tags.split(",")
+            if t.strip() and t.strip() != "FRAUD_HOLD"
+        ]
+        if "FRAUD_CLEARED" not in tags_list:
+            tags_list.append("FRAUD_CLEARED")
+        await client.update_order(order_id, {"tags": ", ".join(tags_list)})
+
+        return {
+            "order_id": order_id,
+            "status": "released",
+            "unblocked_count": len(released),
+            "fulfillment_orders": released,
+        }
+    finally:
+        await client.close()

@@ -195,6 +195,25 @@ async def handle_order_created(event: WebhookEvent) -> None:
         customer_email,
     )
 
+    # Fast-path 3PL Interceptor: Check fraud risk and hold fulfillment orders immediately
+    try:
+        from ecommerce_ops.connectors.shopify.fulfillment_interceptor import (
+            FulfillmentHoldInterceptor,
+        )
+
+        intercept_result = await FulfillmentHoldInterceptor.intercept_order_for_3pl(
+            order, shop_domain=event.shop_domain
+        )
+        if intercept_result.get("intercepted"):
+            logger.warning(
+                "3PL Interceptor held order %s (risk_score=%s, factors=%s)",
+                order_id,
+                intercept_result.get("risk_score"),
+                intercept_result.get("risk_factors"),
+            )
+    except Exception as e:
+        logger.exception("3PL Interceptor fast-path check failed for order %s: %s", order_id, e)
+
     await _handle(
         event,
         task_name="shopify.order_created",
