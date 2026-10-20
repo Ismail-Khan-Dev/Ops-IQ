@@ -14,13 +14,36 @@ async def notify_hitl_request(
     action_type: str,
     risk_level: str,
     confidence: float,
+    payload: Optional[dict] = None,
+    impact: Optional[dict] = None,
+    dashboard_url: Optional[str] = None,
 ):
     msg = (
         f"[HITL] {agent} — {action_type} (risk: {risk_level}, conf: {confidence:.2f})\n"
         f"Action ID: {action_id}"
     )
     logger.info("NOTIFY: %s", msg)
-    await _send_slack(msg)
+
+    # Dispatch interactive Slack message with Approve/Reject buttons
+    try:
+        from ecommerce_ops.infra.slack_interactive import send_interactive_hitl_notification
+
+        sent_interactive = await send_interactive_hitl_notification(
+            action_id=action_id,
+            agent=agent,
+            action_type=action_type,
+            risk_level=risk_level,
+            confidence=confidence,
+            payload=payload,
+            impact=impact,
+            dashboard_url=dashboard_url,
+        )
+        if not sent_interactive:
+            await _send_slack(msg)
+    except Exception as e:
+        logger.warning("Interactive Slack notification failed, falling back to text: %s", e)
+        await _send_slack(msg)
+
     await notify_email("HITL approval required", msg)
     await dispatch_outbound_webhook("hitl_request", {"agent": agent, "action_id": action_id})
     await ws_manager.broadcast(

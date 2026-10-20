@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     # preferred over SLACK_BOT_TOKEN for workspace apps.
     # When set, it is used first and the bot-token path is skipped.
     SLACK_WEBHOOK_URL: Optional[str] = None
+    SLACK_SIGNING_SECRET: Optional[SecretStr] = None
     RESEND_API_KEY: Optional[SecretStr] = None
     NOTIFY_EMAIL: Optional[str] = None
     NOTIFY_FROM_EMAIL: Optional[str] = None

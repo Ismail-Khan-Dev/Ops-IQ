@@ -1011,6 +1011,8 @@ async def run_pipeline_task(run_id: str, db_settings: StoreSettings, shop_domain
                         action_type=mapped_type,
                         risk_level=risk_level,
                         confidence=d.confidence_score,
+                        payload=payload,
+                        impact={"financial_impact": financial_impact},
                     )
 
             await session.commit()

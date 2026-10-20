@@ -28,6 +28,7 @@ from ecommerce_ops.api.middleware import setup_middleware
 from ecommerce_ops.api.observability import router as observability_router
 from ecommerce_ops.api.security import router as security_router
 from ecommerce_ops.api.shopify import router as shopify_router
+from ecommerce_ops.api.slack import router as slack_router
 from ecommerce_ops.api.sso import router as sso_router
 from ecommerce_ops.api.versioning import APIVersionMiddleware, create_v1_router
 from ecommerce_ops.api.ws import WS_TICKET_TTL_SECONDS, ws_manager, ws_ticket_store
@@ -293,6 +294,10 @@ app.include_router(demo_router)
 # Include Integration routes (outbound webhooks)
 app.include_router(integrations_router, prefix="/api")
 
+# Include Slack interactive routes
+app.include_router(slack_router, prefix="/api")
+app.include_router(slack_router)
+
 # Include Core routes (approvals, agents, settings, analytics, health)
 app.include_router(core_router, prefix="/api")
 
@@ -307,6 +312,7 @@ v1_router = create_v1_router(
     demo_router,
     core_router,
     integrations_router=integrations_router,
+    slack_router=slack_router,
 )
 app.include_router(v1_router)
 app.add_middleware(APIVersionMiddleware)
