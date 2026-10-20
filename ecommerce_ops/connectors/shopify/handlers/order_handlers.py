@@ -41,6 +41,10 @@ SHOPIFY_TASK_NAMES = (
     "shopify.customer_updated",
     "shopify.inventory_low",
     "shopify.inventory_changed",
+    "shopify.app_uninstalled",
+    "shopify.customers_redact",
+    "shopify.shop_redact",
+    "shopify.customers_data_request",
 )
 
 
@@ -435,6 +439,13 @@ async def handle_inventory_levels_changed(event: WebhookEvent) -> None:
     )
 
 
+from ecommerce_ops.connectors.shopify.handlers.compliance_handlers import (
+    handle_app_uninstalled,
+    handle_customers_data_request,
+    handle_customers_redact,
+    handle_shop_redact,
+)
+
 # Handler registry for easy registration
 WEBHOOK_HANDLERS = {
     "orders/create": handle_order_created,
@@ -448,4 +459,8 @@ WEBHOOK_HANDLERS = {
     "customers/update": handle_customer_updated,
     "inventory_levels/low": handle_inventory_level_low,
     "inventory_levels/change": handle_inventory_levels_changed,
+    "app/uninstalled": handle_app_uninstalled,
+    "customers/redact": handle_customers_redact,
+    "shop/redact": handle_shop_redact,
+    "customers/data_request": handle_customers_data_request,
 }
