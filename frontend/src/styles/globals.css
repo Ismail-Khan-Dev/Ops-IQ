@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-bg text-text-primary font-body antialiased;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-border rounded-card p-card shadow-card;
+  }
+  .card-hover {
+    @apply bg-surface border border-border rounded-card p-card shadow-card transition-all duration-200 hover:shadow-card-hover hover:border-border-dark;
+  }
+  .card-flat {
+    @apply bg-surface-2 border border-border-light rounded-card p-card;
+  }
+  .section-title {
+    @apply font-display text-display-sm text-text-primary;
+  }
+  .label-caps {
+    @apply text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted leading-4;
+  }
+
+  .dot { @apply w-2 h-2 rounded-full; }
+  .dot-green { @apply w-2 h-2 rounded-full bg-success; }
+  .dot-amber { @apply w-2 h-2 rounded-full bg-warning; }
+  .dot-red { @apply w-2 h-2 rounded-full bg-danger; }
+  .dot-blue { @apply w-2 h-2 rounded-full bg-primary; }
+  .dot-gray { @apply w-2 h-2 rounded-full bg-text-muted; }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-badge text-xs font-medium;
+  }
+  .badge-success { @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-badge text-xs font-medium bg-success-light text-success; }
+  .badge-warning { @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-badge text-xs font-medium bg-warning-light text-warning; }
+  .badge-danger { @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-badge text-xs font-medium bg-danger-light text-danger; }
+  .badge-info { @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-badge text-xs font-medium bg-info-light text-info; }
+  .badge-primary { @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-badge text-xs font-medium bg-primary-light text-primary; }
+  .badge-muted { @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-badge text-xs font-medium bg-surface-3 text-text-secondary; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-button font-medium text-sm transition-all duration-150;
+  }
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-button font-medium text-sm transition-all duration-150 bg-primary text-white hover:bg-primary-hover active:scale-[0.98] shadow-sm; }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-button font-medium text-sm transition-all duration-150 bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text-primary; }
+  .btn-danger { @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-button font-medium text-sm transition-all duration-150 bg-danger-light text-danger hover:bg-danger/10; }
+  .btn-success { @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-button font-medium text-sm transition-all duration-150 bg-success-light text-success hover:bg-success/10; }
+  .btn-outline { @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-button font-medium text-sm transition-all duration-150 border border-border text-text-secondary hover:bg-surface-3; }
+
+  .confidence-pill {
+    @apply inline-flex items-center px-2 py-0.5 rounded-pill font-mono text-xs font-medium;
+  }
+  .confidence-high { @apply inline-flex items-center px-2 py-0.5 rounded-pill font-mono text-xs font-medium bg-success-light text-success; }
+  .confidence-medium { @apply inline-flex items-center px-2 py-0.5 rounded-pill font-mono text-xs font-medium bg-warning-light text-warning; }
+  .confidence-low { @apply inline-flex items-center px-2 py-0.5 rounded-pill font-mono text-xs font-medium bg-danger-light text-danger; }
+
+  .risk-bar { @apply h-1.5 rounded-full bg-surface-4 overflow-hidden; }
+  .risk-bar-fill { @apply h-full rounded-full transition-all duration-500; }
+  .risk-high { @apply h-full rounded-full transition-all duration-500 bg-danger; }
+  .risk-medium { @apply h-full rounded-full transition-all duration-500 bg-warning; }
+  .risk-low { @apply h-full rounded-full transition-all duration-500 bg-success; }
+
+  .table-container { @apply overflow-x-auto; }
+  .table { @apply w-full text-left; }
+  .table th { @apply text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted leading-4 pb-3 pt-0; }
+  .table td { @apply py-3 border-t border-border; }
+  .table tr:hover td { @apply bg-surface-2; }
+
+  .progress-bar { @apply h-2 rounded-full bg-surface-4 overflow-hidden; }
+  .progress-fill { @apply h-full rounded-full transition-all duration-700 ease-out; }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2 rounded-button text-sm text-text-secondary transition-all duration-150 hover:bg-surface-3 hover:text-text-primary;
+  }
+  .sidebar-link-active {
+    @apply flex items-center gap-3 px-3 py-2 rounded-button text-sm font-medium text-primary bg-primary-light border-l-2 border-primary -ml-px transition-all duration-150;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded bg-surface-3;
+  }
+
+  .metric-card {
+    @apply bg-surface border border-border rounded-card p-card shadow-card flex flex-col;
+  }
+  .metric-label {
+    @apply label-caps mb-1;
+  }
+  .metric-value {
+    @apply font-display text-2xl font-bold text-text-primary;
+  }
+  .metric-change {
+    @apply text-xs font-mono mt-1;
+  }
+}

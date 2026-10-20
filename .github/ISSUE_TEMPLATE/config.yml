@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: OpsIQ Documentation
+    url: https://github.com/Ismail-2001/ecom-ops-automation-system#readme
+    about: Check the README for setup guides, architecture docs, and deployment instructions.
+  - name: Enterprise Inquiries
+    url: mailto:admin@example.com
+    about: For enterprise licensing, white-label partnerships, or security disclosures.

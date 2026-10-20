@@ -1,0 +1,56 @@
+# ── OpsIQ — Backup Docker Compose ──────────────────────────
+# Usage: docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d
+
+services:
+  # ── PostgreSQL Backup (hourly by default, matches DR policy RPO of 1h) ──
+  postgres-backup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: opsiq-postgres-backup
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ecommerce_ops}
+      SCHEDULE: "${BACKUP_SCHEDULE:-0 * * * *}"
+      BACKUP_KEEP_DAYS: ${POSTGRES_BACKUP_KEEP_DAYS:-7}
+      BACKUP_KEEP_WEEKS: ${POSTGRES_BACKUP_KEEP_WEEKS:-4}
+      BACKUP_KEEP_MONTHS: ${POSTGRES_BACKUP_KEEP_MONTHS:-6}
+      HEALTHCHECK_PORT: 8081
+    volumes:
+      - postgres_backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
+
+  # ── Redis Backup (every 6 hours) ──────────────────────────
+  redis-backup:
+    image: redis:7-alpine
+    container_name: opsiq-redis-backup
+    command: >
+      sh -c "while true; do
+        redis-cli -h redis BGSAVE && \
+        echo '[$(date)] Redis BGSAVE completed' >> /backup/redis-backup.log;
+        sleep 21600;
+      done"
+    volumes:
+      - redis_data:/data:ro
+      - redis_backups:/backup
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.1"
+
+volumes:
+  postgres_backups:
+    name: opsiq-postgres-backups
+  redis_backups:
+    name: opsiq-redis-backups

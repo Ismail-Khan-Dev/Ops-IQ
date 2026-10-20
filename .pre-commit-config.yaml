@@ -1,0 +1,12 @@
+# Pre-commit hooks for OpsIQ.
+# Install with:  pip install pre-commit && pre-commit install --hook-type pre-commit --hook-type pre-push
+# This catches secrets locally BEFORE they are committed/pushed.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+        args: ["--config", ".gitleaks.toml", "--verbose"]
+        # Push protection: re-scan on every push so a secret that slips past
+        # the pre-commit stage (e.g. force-pushed history) still blocks the push.
+        stages: [pre-commit, pre-push]

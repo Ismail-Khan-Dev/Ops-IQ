@@ -1,0 +1,111 @@
+# ── OpsIQ — Staging Environment ─────────────────────────────
+# Mirrors production but runs on different ports
+# Usage: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+#
+# Ports:
+#   API:     8100 (prod: 8000)
+#   Dashboard: 3300 (prod: 3000)
+#   Nginx:   9080/9443 (prod: 8080/8443)
+#   Postgres: 5433 (prod: 5432)
+#   Redis:   6380 (prod: 6379)
+#   Prometheus: 9094 (prod: 9093)
+#   Grafana: 3004 (prod: 3003)
+
+services:
+  # ── PostgreSQL (staging) ──────────────────────────────────
+  postgres:
+    container_name: opsiq-postgres-staging
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_staging:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ecommerce_ops_staging
+
+  # ── Redis (staging) ──────────────────────────────────────
+  redis:
+    container_name: opsiq-redis-staging
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data_staging:/data
+
+  # ── API (staging) ────────────────────────────────────────
+  api:
+    image: ${API_IMAGE:-ghcr.io/opsiq/ecom-ops:latest}
+    container_name: opsiq-api-staging
+    ports:
+      - "8100:8000"
+    environment:
+      ENV: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/ecommerce_ops_staging
+      REDIS_URL: redis://redis:6379/1
+      CORS_ORIGINS: http://localhost:3300,http://localhost:9080
+      TRUSTED_PROXIES: 172.16.0.0/12,192.168.0.0/16,10.0.0.0/8
+
+  # ── Dashboard (staging) ──────────────────────────────────
+  dashboard:
+    container_name: opsiq-dashboard-staging
+    ports:
+      - "3300:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8100
+      NEXT_PUBLIC_WS_URL: ws://localhost:8100/ws/queue
+
+  # ── Nginx (staging) ──────────────────────────────────────
+  nginx:
+    container_name: opsiq-nginx-staging
+    ports:
+      - "9080:80"
+      - "9443:443"
+
+  # ── Prometheus (staging) ─────────────────────────────────
+  prometheus:
+    container_name: opsiq-prometheus-staging
+    ports:
+      - "9094:9090"
+    volumes:
+      - prometheus_data_staging:/prometheus
+
+  # ── Grafana (staging) ────────────────────────────────────
+  grafana:
+    container_name: opsiq-grafana-staging
+    ports:
+      - "3004:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: staging-admin
+    volumes:
+      - grafana_data_staging:/var/lib/grafana
+
+  # ── Alertmanager (staging) ───────────────────────────────
+  alertmanager:
+    container_name: opsiq-alertmanager-staging
+
+  # ── Exporters (staging) ──────────────────────────────────
+  postgres-exporter:
+    container_name: opsiq-postgres-exporter-staging
+
+  redis-exporter:
+    container_name: opsiq-redis-exporter-staging
+
+  # ── Tempo (staging) ──────────────────────────────────────
+  tempo:
+    container_name: opsiq-tempo-staging
+    volumes:
+      - tempo_data_staging:/var/tempo
+
+  # ── OTel Collector (staging) ─────────────────────────────
+  otel-collector:
+    container_name: opsiq-otel-collector-staging
+
+volumes:
+  postgres_data_staging:
+    name: opsiq-postgres-data-staging
+  redis_data_staging:
+    name: opsiq-redis-data-staging
+  prometheus_data_staging:
+    name: opsiq-prometheus-data-staging
+  grafana_data_staging:
+    name: opsiq-grafana-data-staging
+  tempo_data_staging:
+    name: opsiq-tempo-data-staging

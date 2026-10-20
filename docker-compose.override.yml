@@ -1,0 +1,72 @@
+# ── Development Overrides ──────────────────────────────────
+# Auto-merged with docker-compose.yml by default
+# Usage: docker compose up (uses both files)
+# Production: docker compose -f docker-compose.yml up (skips this)
+
+services:
+  api:
+    image: opsiq-api-fixed:latest
+    working_dir: /app
+    command: >
+      python -m uvicorn ecommerce_ops.api.app:app --host 0.0.0.0 --port 8000 --log-level debug --timeout-graceful-shutdown 30
+    env_file:
+      - .env
+    environment:
+      ENV: development
+      DEBUG: "true"
+      SHADOW_MODE: "true"
+      PYTHONPATH: /app
+    volumes:
+      - ./ecommerce_ops:/app/ecommerce_ops
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+      - ./requirements.txt:/app/requirements.txt
+      - ./pyproject.toml:/app/pyproject.toml
+      - audit_logs:/app
+    ports:
+      - "8000:8000"
+      - "5678:5678"
+    develop:
+      watch:
+        - action: sync
+          path: ./ecommerce_ops
+          target: /app/ecommerce_ops
+        - action: sync
+          path: ./alembic
+          target: /app/alembic
+
+  postgres:
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ecommerce_ops
+
+  redis:
+    ports:
+      - "6380:6379"
+
+  prometheus:
+    ports:
+      - "9093:9090"
+
+  grafana:
+    ports:
+      - "3003:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+
+  postgres-exporter:
+    ports:
+      - "9188:9187"
+
+  redis-exporter:
+    ports:
+      - "9122:9121"
+
+  nginx:
+    volumes:
+      - ./nginx/certs:/etc/nginx/certs:ro

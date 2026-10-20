@@ -1,0 +1,19 @@
+# ── OpsIQ — Staging Deploy (DISABLED) ──────────────────────
+# This workflow is DISABLED. Use cd-staging.yml instead.
+# Kept for reference only. Do not enable.
+name: Deploy to Staging (Disabled)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "yes" to confirm this disabled workflow should run'
+        required: true
+
+jobs:
+  disabled:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm != 'yes'
+    steps:
+      - run: echo "This workflow is disabled. Use cd-staging.yml instead."
+      - run: exit 1

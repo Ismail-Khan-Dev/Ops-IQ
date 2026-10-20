@@ -1,0 +1,309 @@
+groups:
+  - name: opsiq-backend
+    interval: 30s
+    rules:
+      # ── High-Level Service Health ─────────────────────────
+      - alert: BackendDown
+        expr: up{job="opsiq-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend is down"
+          description: "Backend has been unreachable for 1 minute"
+
+      - alert: FrontendDown
+        expr: up{job="opsiq-frontend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Frontend is down"
+          description: "Frontend has been unreachable for 1 minute"
+
+      # ── API Error Rates ───────────────────────────────────
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="opsiq-backend",status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total{job="opsiq-backend"}[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate ({{ $value | humanizePercentage }})"
+          description: "More than 5% of requests are returning 5xx errors"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="opsiq-backend"}[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p99 latency ({{ $value }}s)"
+          description: "p99 request latency exceeded 2 seconds"
+
+      # ── Database Health ───────────────────────────────────
+      - alert: PostgresDown
+        expr: up{job="postgres"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL exporter reports database is unreachable"
+
+      - alert: PostgresConnectionPoolExhausted
+        expr: |
+          pg_stat_database_numbackends / pg_settings_max_connections > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL connection pool near exhaustion ({{ $value | humanizePercentage }})"
+          description: "More than 85% of max connections in use"
+
+      - alert: PostgresReplicationLag
+        expr: pg_replication_lag_seconds > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL replication lag ({{ $value }}s)"
+          description: "Replication lag exceeded 30 seconds"
+
+      # ── Redis Health ──────────────────────────────────────
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis exporter reports Redis is unreachable"
+
+      - alert: RedisMemoryHigh
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage high ({{ $value | humanizePercentage }})"
+          description: "Redis memory usage exceeded 85%"
+
+      - alert: RedisConnectionsHigh
+        expr: |
+          redis_connected_clients / redis_config_maxclients > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis connections high ({{ $value | humanizePercentage }})"
+          description: "Redis client connections exceeded 80% of max"
+
+      # ── Task Queue Health ─────────────────────────────────
+      - alert: TaskQueueDepthHigh
+        expr: |
+          sum(queue_depth) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Task queue depth high ({{ $value }})"
+          description: "More than 1000 tasks pending in queue"
+
+      - alert: TaskQueueProcessingStalled
+        expr: |
+          rate(queue_processed_total[5m]) == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Task queue processing stalled"
+          description: "No tasks processed in 10 minutes"
+
+      # ── Rate Limiter ──────────────────────────────────────
+      - alert: RateLimitExceeded
+        expr: |
+          sum(rate(rate_limit_exceeded_total[5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limit exceeded frequently ({{ $value }}/s)"
+          description: "More than 10 rate limit violations per second"
+
+      # ── Authentication ────────────────────────────────────
+      - alert: HighAuthFailureRate
+        expr: |
+          sum(rate(auth_failures_total[5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High authentication failure rate ({{ $value }}/s)"
+          description: "More than 5 auth failures per second - possible brute force"
+
+      # ── Agent Health ──────────────────────────────────────
+      - alert: AgentStalled
+        expr: |
+          time() - agent_last_decision_timestamp_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent }} stalled"
+          description: "Agent has not made a decision in 5 minutes"
+
+      - alert: AgentHighRejectionRate
+        expr: |
+          sum(rate(agent_rejections_total[5m])) by (agent)
+          /
+          sum(rate(agent_decisions_total[5m])) by (agent) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent }} high rejection rate ({{ $value | humanizePercentage }})"
+          description: "Agent rejecting more than 50% of decisions"
+
+      # ── Shopify Integration ───────────────────────────────
+      - alert: ShopifyWebhookFailures
+        expr: |
+          sum(rate(shopify_webhook_failures_total[5m])) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Shopify webhook failures ({{ $value }}/s)"
+          description: "Shopify webhooks failing - check HMAC verification or API limits"
+
+      - alert: ShopifyAPIRateLimited
+        expr: |
+          sum(rate(shopify_api_rate_limited_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Shopify API rate limited"
+          description: "Hit Shopify API rate limit - reduce request frequency"
+
+      # ── LLM / AI ──────────────────────────────────────────
+      - alert: LLMAPIHighLatency
+        expr: |
+          histogram_quantile(0.99, sum(rate(llm_request_duration_seconds_bucket[5m])) by (le)) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM API high latency ({{ $value }}s)"
+          description: "LLM API p99 latency exceeded 30 seconds"
+
+      - alert: LLMAPIHighErrorRate
+        expr: |
+          sum(rate(llm_request_errors_total[5m])) / sum(rate(llm_requests_total[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LLM API high error rate ({{ $value | humanizePercentage }})"
+          description: "More than 10% of LLM requests failing"
+
+      # ── Disk / Resources ──────────────────────────────────
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space low ({{ $value | humanizePercentage }} available)"
+          description: "Less than 15% disk space remaining"
+
+      - alert: MemoryHigh
+        expr: |
+          (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "System memory usage high ({{ $value | humanizePercentage }})"
+          description: "More than 90% of system memory in use"
+
+      - alert: CPUHigh
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU usage high ({{ $value }}%)"
+          description: "CPU usage exceeded 85% for 10 minutes"
+
+      # ── Live Execution (week 8) ────────────────────────────
+      - alert: ShopExecutionFailureRate
+        expr: |
+          sum(rate(shop_executions_total{result="failed"}[5m])) by (action_type)
+          /
+          sum(rate(shop_executions_total[5m])) by (action_type) > 0.25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Shopify action failure rate high for {{ $labels.action_type }}"
+          description: "More than 25% of {{ $labels.action_type }} executions failing — Shopify scope/config issue"
+
+      - alert: ShopExecutionFailureSpike
+        expr: |
+          increase(shop_executions_total{result="failed"}[15m]) > 10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Shopify execution failures spiking ({{ $value }} in 15m)"
+          description: "Automated shop actions are failing at an abnormal rate — investigate immediately"
+
+      - alert: OutboxDeadLetterGrowth
+        expr: |
+          increase(outbox_dead_letters_total[15m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox messages dead-lettering"
+          description: "{{ $value }} outbox messages dead-lettered in 15m — at-least-once delivery degrading"
+
+      - alert: AgentExecutionErrorSpike
+        expr: |
+          increase(agent_execution_errors_total[15m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent execution errors spiking ({{ $value }} in 15m)"
+          description: "Agent action executions are throwing exceptions — check Shopify client code paths"
+
+      # ── Shadow A/B Experiments (week 8) ────────────────────
+      - alert: ABDivergenceHigh
+        expr: |
+          ab_divergence_score > 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent decision diverging from baseline ({{ $value }})"
+          description: "{{ $labels.agent }} decisions diverge strongly from the conservative baseline — review before promoting autonomy"
+
+      - alert: ABBaselineOutperforming
+        expr: |
+          sum(increase(ab_winner_total{variant="B"}[1h])) by (agent)
+          >
+          2 * sum(increase(ab_winner_total{variant="A"}[1h])) by (agent)
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rule baseline beating {{ $labels.agent }} 2:1"
+          description: "In shadow A/B runs the conservative baseline wins twice as often as the agent — revisit the agent strategy"

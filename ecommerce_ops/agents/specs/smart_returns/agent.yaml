@@ -1,0 +1,14 @@
+agent_id: smart_returns
+display_name: Smart Returns
+description: "LLM-powered return likelihood prediction with preventive action recommendations"
+llm_class: ecommerce_ops.agents.smart_returns.agent.SmartReturnsAgentLLM
+llm_method: analyze
+rule_class: ecommerce_ops.agents.smart_returns.returns.SmartReturnsAgent
+rule_method: run
+input_adapter: ecommerce_ops.agents.smart_returns_adapters.adapt_input
+output_adapter: ecommerce_ops.agents.smart_returns_adapters.adapt_output
+slo_p95_latency_ms: 5000.0
+slo_min_success_rate: 0.90
+state_keys:
+  - pending_orders
+  - active_orders

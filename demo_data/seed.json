@@ -1,0 +1,150 @@
+{
+  "products": [
+    {
+      "id": "PROD-001",
+      "name": "Wireless Headphones",
+      "category": "Electronics",
+      "price": 79.99,
+      "compare_at_price": 99.99,
+      "inventory_quantity": 150,
+      "status": "active"
+    },
+    {
+      "id": "PROD-002",
+      "name": "Smart Watch",
+      "category": "Electronics",
+      "price": 199.99,
+      "compare_at_price": 249.99,
+      "inventory_quantity": 75,
+      "status": "active"
+    },
+    {
+      "id": "PROD-003",
+      "name": "Running Shoes",
+      "category": "Footwear",
+      "price": 129.99,
+      "compare_at_price": 159.99,
+      "inventory_quantity": 200,
+      "status": "active"
+    },
+    {
+      "id": "PROD-004",
+      "name": "Laptop Stand",
+      "category": "Accessories",
+      "price": 49.99,
+      "compare_at_price": 69.99,
+      "inventory_quantity": 300,
+      "status": "active"
+    },
+    {
+      "id": "PROD-005",
+      "name": "USB-C Hub",
+      "category": "Electronics",
+      "price": 39.99,
+      "compare_at_price": 54.99,
+      "inventory_quantity": 0,
+      "status": "out_of_stock"
+    }
+  ],
+  "customers": [
+    {
+      "id": "CUST-001",
+      "email": "john.doe@example.com",
+      "name": "John Doe",
+      "total_orders": 5,
+      "total_spent": 459.95,
+      "last_order_date": "2025-12-15"
+    },
+    {
+      "id": "CUST-002",
+      "email": "jane.smith@example.com",
+      "name": "Jane Smith",
+      "total_orders": 12,
+      "total_spent": 1899.88,
+      "last_order_date": "2025-12-20"
+    },
+    {
+      "id": "CUST-003",
+      "email": "bob.wilson@example.com",
+      "name": "Bob Wilson",
+      "total_orders": 3,
+      "total_spent": 299.97,
+      "last_order_date": "2025-12-18"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ORD-001",
+      "customer_id": "CUST-001",
+      "total": 279.98,
+      "status": "fulfilled",
+      "risk_score": 0.15,
+      "created_at": "2025-12-15T10:30:00Z"
+    },
+    {
+      "id": "ORD-002",
+      "customer_id": "CUST-002",
+      "total": 199.99,
+      "status": "fulfilled",
+      "risk_score": 0.08,
+      "created_at": "2025-12-20T14:45:00Z"
+    },
+    {
+      "id": "ORD-003",
+      "customer_id": "CUST-003",
+      "total": 129.99,
+      "status": "pending",
+      "risk_score": 0.72,
+      "created_at": "2025-12-18T09:15:00Z"
+    }
+  ],
+  "abandoned_carts": [
+    {
+      "id": "CART-001",
+      "customer_email": "potential.buyer@example.com",
+      "items": [
+        {"name": "Smart Watch", "price": 199.99, "quantity": 1},
+        {"name": "USB-C Hub", "price": 39.99, "quantity": 2}
+      ],
+      "total": 279.97,
+      "abandoned_at": "2025-12-19T16:00:00Z",
+      "recovery_strategy": "discount_10_percent",
+      "recovery_email_sent": true,
+      "recovered": false
+    },
+    {
+      "id": "CART-002",
+      "customer_email": "window.shopper@example.com",
+      "items": [
+        {"name": "Running Shoes", "price": 129.99, "quantity": 1}
+      ],
+      "total": 129.99,
+      "abandoned_at": "2025-12-20T11:30:00Z",
+      "recovery_strategy": "free_shipping",
+      "recovery_email_sent": false,
+      "recovered": false
+    }
+  ],
+  "support_tickets": [
+    {
+      "id": "TICKET-001",
+      "customer_email": "john.doe@example.com",
+      "subject": "Order not received",
+      "message": "I placed an order 5 days ago but haven't received it yet.",
+      "sentiment": "negative",
+      "priority": "high",
+      "category": "order_issue",
+      "status": "open"
+    },
+    {
+      "id": "TICKET-002",
+      "customer_email": "jane.smith@example.com",
+      "subject": "Product question",
+      "message": "Is the Smart Watch compatible with Android?",
+      "sentiment": "neutral",
+      "priority": "low",
+      "category": "product_question",
+      "status": "resolved"
+    }
+  ]
+}

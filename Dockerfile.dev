@@ -1,0 +1,41 @@
+# ── OpsIQ — Development Dockerfile ──────────────────────────
+# Lightweight development image with hot reload and debug tools
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install dev tools
+RUN pip install --no-cache-dir \
+    ipython \
+    pdbpp \
+    pytest-asyncio \
+    watchfiles
+
+# Copy application code
+COPY . .
+
+# Set environment
+ENV PYTHONPATH=/app \
+    ENV=development \
+    DEBUG=true \
+    PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "ecommerce_ops.api.app:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--reload", \
+     "--reload-dir", "ecommerce_ops", \
+     "--log-level", "debug"]

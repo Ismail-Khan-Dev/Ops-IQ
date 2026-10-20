@@ -1,0 +1,9 @@
+agent_id: pricing
+display_name: Price Optimization
+description: Competitor price monitoring and dynamic pricing (rule-based)
+rule_class: ecommerce_ops.agents.pricing.PricingAgent
+rule_method: run
+slo_p95_latency_ms: 3000.0
+slo_min_success_rate: 0.98
+state_keys:
+  - inventory_data

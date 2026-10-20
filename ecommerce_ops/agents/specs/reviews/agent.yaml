@@ -1,0 +1,9 @@
+agent_id: reviews
+display_name: Review Moderation
+description: "Sentiment analysis and response drafting (hybrid: rule entry + internal LLM)"
+rule_class: ecommerce_ops.agents.reviews.ReviewsAgent
+rule_method: run
+slo_p95_latency_ms: 5000.0
+slo_min_success_rate: 0.95
+state_keys:
+  - reviews_data

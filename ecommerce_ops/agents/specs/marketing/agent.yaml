@@ -1,0 +1,13 @@
+agent_id: marketing
+display_name: Marketing Automation
+description: LLM-powered campaign creation with rule-based fallback
+llm_class: ecommerce_ops.agents.marketing_llm.MarketingAutomationAgentLLM
+llm_method: create_campaign
+rule_class: ecommerce_ops.agents.marketing.MarketingAgent
+rule_method: run
+input_adapter: ecommerce_ops.agents.marketing_adapters.adapt_input
+output_adapter: ecommerce_ops.agents.marketing_adapters.adapt_output
+slo_p95_latency_ms: 8000.0
+slo_min_success_rate: 0.90
+state_keys:
+  - inventory_data

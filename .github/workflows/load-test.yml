@@ -1,0 +1,69 @@
+name: Load Testing (k6)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6 AM
+  push:
+    branches: [main]
+    paths:
+      - 'ecommerce_ops/**'
+      - 'scripts/load-test.js'
+      - '.github/workflows/load-test.yml'
+
+jobs:
+  load-test:
+    name: k6 Load Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D68
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install k6 -y
+
+      - name: Build API image
+        run: docker compose build api
+
+      - name: Start services
+        run: |
+          docker compose up -d postgres redis api
+          sleep 15
+          # Wait for API health
+          for i in {1..30}; do
+            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              echo "API is healthy"
+              break
+            fi
+            echo "Waiting for API... ($i/30)"
+            sleep 5
+          done
+
+      - name: Run k6 Load Test
+        run: |
+          k6 run \
+            --env BASE_URL=http://localhost:8000 \
+            --env API_KEY=opsiq-dev-key-2024 \
+            --out json=scripts/k6-results.json \
+            scripts/load-test.js
+        continue-on-error: true
+
+      - name: Upload Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-load-test-results
+          path: |
+            scripts/k6-results.json
+            scripts/load-test-report-*.json
+          retention-days: 30
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v

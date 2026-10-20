@@ -1,0 +1,14 @@
+agent_id: order_swaps
+display_name: Order Swaps
+description: "LLM-powered product substitution when items are out of stock"
+llm_class: ecommerce_ops.agents.order_swaps.agent.OrderSwapsAgentLLM
+llm_method: analyze
+rule_class: ecommerce_ops.agents.order_swaps.swaps.OrderSwapsAgent
+rule_method: run
+input_adapter: ecommerce_ops.agents.order_swaps_adapters.adapt_input
+output_adapter: ecommerce_ops.agents.order_swaps_adapters.adapt_output
+slo_p95_latency_ms: 5000.0
+slo_min_success_rate: 0.90
+state_keys:
+  - out_of_stock_items
+  - active_orders

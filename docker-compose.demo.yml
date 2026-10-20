@@ -1,0 +1,115 @@
+# Demo Environment - Self-contained demo with seed data
+# Usage: docker compose -f docker-compose.demo.yml up
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────
+  postgres-demo:
+    image: postgres:16-alpine
+    container_name: eops-postgres-demo
+    environment:
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo_secret
+      POSTGRES_DB: ecommerce_ops
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_demo_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - demo_net
+
+  # ── Redis ──────────────────────────────────────────────
+  redis-demo:
+    image: redis:7-alpine
+    container_name: eops-redis-demo
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_demo_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - demo_net
+
+  # ── App ────────────────────────────────────────────────
+  app-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eops-app-demo
+    environment:
+      - ENV=demo
+      - DATABASE_URL=postgresql+asyncpg://demo:demo_secret@postgres-demo:5432/ecommerce_ops
+      - REDIS_URL=redis://redis-demo:6379/0
+      - DEMO_MODE=true
+      - LOG_LEVEL=INFO
+      - SHOPIFY_CLIENT_ID=demo_client_id
+      - SHOPIFY_CLIENT_SECRET=demo_client_secret
+      - SHOPIFY_APP_URL=http://localhost:8000
+      - SHOPIFY_SHOP_DOMAIN=demo.myshopify.com
+      - SHOPIFY_ACCESS_TOKEN=demo_token
+      - JWT_SECRET_KEY=demo_jwt_secret_key_for_development_only
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres-demo:
+        condition: service_healthy
+      redis-demo:
+        condition: service_healthy
+    volumes:
+      - ./demo_data:/app/demo_data
+    networks:
+      - demo_net
+
+  # ── Prometheus ─────────────────────────────────────────
+  prometheus-demo:
+    image: prom/prometheus:latest
+    container_name: eops-prometheus-demo
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
+    ports:
+      - "9091:9090"
+    networks:
+      - demo_net
+
+  # ── Grafana ────────────────────────────────────────────
+  grafana-demo:
+    image: grafana/grafana:latest
+    container_name: eops-grafana-demo
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=demo
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3001:3000"
+    networks:
+      - demo_net
+
+  # ── Nginx Reverse Proxy ────────────────────────────────
+  nginx-demo:
+    image: nginx:alpine
+    container_name: eops-nginx-demo
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app-demo
+    networks:
+      - demo_net
+
+volumes:
+  postgres_demo_data:
+  redis_demo_data:
+
+networks:
+  demo_net:
+    driver: bridge

@@ -1,0 +1,157 @@
+groups:
+  - name: ecom-ops-api
+    interval: 30s
+    rules:
+      - alert: APIHighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API 5xx error rate above 5%"
+          description: "HTTP 5xx error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: APIHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API p95 latency above 2s"
+          description: "p95 latency is {{ $value }}s over the last 5 minutes."
+
+      - alert: APIDown
+        expr: up{job="ecom-ops-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API instance is down"
+          description: "Instance {{ $labels.instance }} has been unreachable for over 1 minute."
+
+  - name: ecom-ops-agents
+    interval: 30s
+    rules:
+      - alert: PipelineFailures
+        expr: rate(pipeline_runs_total{status="failure"}[15m]) > 2
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High pipeline failure rate"
+          description: "Pipeline failures exceeded 2 in the last 15 minutes."
+
+      - alert: AgentDecisionErrors
+        expr: rate(agent_decisions_total[15m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No agent decisions being made"
+          description: "No agent decisions have been recorded in the last 30 minutes."
+
+      - alert: LowAgentConfidence
+        expr: avg by (agent) (agent_decisions_confidence_avg) < 0.6
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent confidence dropping"
+          description: "Agent {{ $labels.agent }} average confidence is below 0.6."
+
+  - name: ecom-ops-infra
+    interval: 30s
+    rules:
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+
+      - alert: HighRateLimitThrottling
+        expr: rate(rate_limit_rejected_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate limit rejection rate"
+          description: "{{ $value }} requests/s are being rate-limited."
+
+  - name: backup-health
+    interval: 60s
+    rules:
+      - alert: BackupMissing
+        expr: (time() - pg_stat_database_xact_commit{datname="ecommerce_ops"}) > 86400
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "No database backup in 24 hours"
+          description: "PostgreSQL backup has not run or failed silently."
+
+      - alert: BackupSizeTooSmall
+        expr: postgres_backup_size_bytes < 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup file suspiciously small"
+          description: "Last backup is only {{ $value }} bytes — likely empty or corrupted."
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.15
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space below 15%"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining."
+
+      - alert: WALAccumulating
+        expr: pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) > 1073741824
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "WAL accumulation detected"
+          description: "Replication lag or WAL archiving stalled ({{ $value }} bytes)."
+
+  - name: llm-cost-budget
+    interval: 60s
+    rules:
+      - alert: LLMDailyBudgetExceeded
+        expr: llm_daily_cost_dollars > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM daily spend exceeded $10"
+          description: "Current day LLM cost is ${{ $value | printf \"%.2f\" }}."
+
+      - alert: LLMBurstCost
+        expr: rate(llm_cost_dollars_total[5m]) * 3600 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LLM hourly burn rate exceeds $5/hr"
+          description: "At current rate, LLM cost will reach ${{ $value | printf \"%.0f\" }}/hr."
+
+      - alert: LLMLatencyHigh
+        expr: histogram_quantile(0.95, rate(llm_call_duration_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM p95 latency above 30s"
+          description: "LLM calls are taking {{ $value | printf \"%.1f\" }}s at p95."

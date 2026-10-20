@@ -1,0 +1,9 @@
+agent_id: cart_recovery
+display_name: Abandoned Cart Recovery
+description: "Identifies abandoned carts and determines personalized recovery strategy"
+rule_class: ecommerce_ops.agents.cart_recovery.agent.AbandonedCartAgent
+rule_method: run
+slo_p95_latency_ms: 5000.0
+slo_min_success_rate: 0.95
+state_keys:
+  - abandoned_carts

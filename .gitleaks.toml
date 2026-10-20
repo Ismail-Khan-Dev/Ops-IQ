@@ -1,0 +1,31 @@
+# Gitleaks configuration for OpsIQ.
+# Extends the default gitleaks rules and allowlists the known, non-sensitive
+# placeholders/fixtures that exist in this repository so the CI secret-scan
+# job stays signal-only (no noise) while still catching real leaks.
+title = "OpsIQ gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known test/placeholder secrets, example templates, and fixture data"
+paths = [
+  '''(?i)\.env\.example$''',
+  '''(?i)fixtures/''',
+  '''(?i)demo_data/''',
+  '''(?i)package-lock\.json$''',
+  '''(?i)\.md$''',
+  '''(?i)node_modules/''',
+]
+regexes = [
+  '''(?i)sk-test-key''',
+  '''(?i)sk-dummy-key''',
+  '''(?i)your[-_ ]?key''',
+  '''(?i)example''',
+  '''(?i)placeholder''',
+  '''(?i)changeme''',
+  '''(?i)dummy''',
+  '''(?i)fake''',
+  '''(?i)xxxx''',
+  '''(?i)REPLACE''',
+]

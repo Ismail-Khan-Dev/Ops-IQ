@@ -1,0 +1,39 @@
+# Gitleaks ignore list (fingerprint = <commit>:<file>:<rule>:<line>).
+#
+# Every entry below is a VERIFIED non-secret in a HISTORICAL commit: masked
+# example values, placeholder tokens, or intentionally committed demo/dev
+# keys used by CI and docs. Real production secrets live in the untracked,
+# git-ignored .env and are not present anywhere in git history.
+#
+# Adding a NEW secret to the repository will NOT be covered here and will make
+# `gitleaks git --exit-code=1` fail in CI.
+
+# Placeholder API keys in public docs (your-api-key / your_api_key / your_token)
+0b2725e4bbf8d55e559d9eff9c7736e5ea212b33:README.md:curl-auth-header:477
+0b2725e4bbf8d55e559d9eff9c7736e5ea212b33:README.md:curl-auth-header:485
+0b2725e4bbf8d55e559d9eff9c7736e5ea212b33:README.md:curl-auth-header:492
+0b2725e4bbf8d55e559d9eff9c7736e5ea212b33:README.md:curl-auth-header:499
+0b2725e4bbf8d55e559d9eff9c7736e5ea212b33:README.md:curl-auth-header:513
+0b2725e4bbf8d55e559d9eff9c7736e5ea212b33:README.md:curl-auth-header:527
+1847b259bb23bb7a08407fb88ee81d00395d9c1e:DEMO.md:curl-auth-header:106
+1847b259bb23bb7a08407fb88ee81d00395d9c1e:DEMO.md:curl-auth-header:129
+1847b259bb23bb7a08407fb88ee81d00395d9c1e:DEMO.md:curl-auth-header:28
+1847b259bb23bb7a08407fb88ee81d00395d9c1e:DEMO.md:curl-auth-header:47
+1847b259bb23bb7a08407fb88ee81d00395d9c1e:DEMO.md:curl-auth-header:66
+1847b259bb23bb7a08407fb88ee81d00395d9c1e:DEMO.md:curl-auth-header:85
+27b9a15d49fb89abb63949ea85bf8aed0470cd89:docs/API.md:curl-auth-header:18
+27b9a15d49fb89abb63949ea85bf8aed0470cd89:docs/API.md:curl-auth-header:25
+27b9a15d49fb89abb63949ea85bf8aed0470cd89:docs/API.md:generic-api-key:709
+
+# Masked example env values in the audit report (truncated with "...")
+14f81fa79797f595b2270bfd427318d87ebc88e0:AUDIT_REPORT.md:generic-api-key:91
+14f81fa79797f595b2270bfd427318d87ebc88e0:AUDIT_REPORT.md:generic-api-key:92
+14f81fa79797f595b2270bfd427318d87ebc88e0:AUDIT_REPORT.md:generic-api-key:94
+
+# Masked placeholder Google-style key (removed from HEAD in frontend hardening)
+a41fe5271af4b85fefe60e3894174e821d8af84f:frontend/src/app/settings/page.tsx:generic-api-key:53
+
+# Intentionally committed dev/demo API keys used by CI, scripts and docs
+73d17e6ce820c7a9a86feced9d30b09267367bbd:.github/workflows/cd-staging.yml:curl-auth-header:136
+73d17e6ce820c7a9a86feced9d30b09267367bbd:scripts/disaster-recovery.sh:curl-auth-header:95
+7645fb54941c33245e6fd4d7a50ae47688c74b6d:Makefile:curl-auth-header:107

@@ -1,0 +1,38 @@
+# ── Ruff Linter Configuration ──────────────────────────────
+target-version = "py312"
+line-length = 100
+
+exclude = []
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default argument
+    "UP007",  # use X | Y for union types
+    "UP035",  # deprecated typing imports (Dict, List, Optional)
+    "UP006",  # use builtin types for annotations
+    "UP045",  # use X | None instead of Optional[X]
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["B011", "SIM300"]
+"ecommerce_ops/api/app.py" = ["E402"]
+
+[lint.isort]
+known-first-party = ["ecommerce_ops"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

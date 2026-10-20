@@ -1,0 +1,134 @@
+name: CD
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'production' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy with auto-rollback
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/ecom-ops
+
+            echo "=== Pre-deploy snapshot ==="
+            PREVIOUS_IMAGE=$(docker inspect --format='{{.Config.Image}}' opsiq-api 2>/dev/null || echo "none")
+            echo "Previous image: $PREVIOUS_IMAGE"
+
+            echo "=== Pulling new image ==="
+            docker compose pull api
+
+            echo "=== Stopping old container ==="
+            docker compose stop api
+
+            echo "=== Starting new container ==="
+            docker compose up -d --no-deps api
+
+            echo "=== Running database migrations ==="
+            docker compose exec -T api alembic upgrade head || {
+              echo "Migration failed — rolling back"
+              docker compose stop api
+              docker compose up -d --no-deps api
+              exit 1
+            }
+
+            echo "=== Health check (30s timeout) ==="
+            HEALTHY=false
+            for i in $(seq 1 10); do
+              sleep 3
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' opsiq-api 2>/dev/null || echo "unknown")
+              HTTP=$(curl -sf http://localhost:8000/ready 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null || echo "unreachable")
+              echo "  Attempt $i/10: container=$STATUS http=$HTTP"
+              if [ "$HTTP" = "ready" ]; then
+                HEALTHY=true
+                break
+              fi
+            done
+
+            if [ "$HEALTHY" = "false" ]; then
+              echo "=== HEALTH CHECK FAILED — ROLLING BACK ==="
+              docker compose stop api
+
+              if [ "$PREVIOUS_IMAGE" != "none" ]; then
+                echo "Restoring previous image: $PREVIOUS_IMAGE"
+                docker tag "$PREVIOUS_IMAGE" opsiq-api:rollback 2>/dev/null || true
+              fi
+
+              docker compose up -d --no-deps api
+              echo "Rolled back to previous version"
+              exit 1
+            fi
+
+            echo "=== Deploy successful ==="
+            docker compose ps api
+            curl -sf http://localhost:8000/health | python3 -m json.tool
+
+  vercel:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'http://localhost:8000' }}
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
