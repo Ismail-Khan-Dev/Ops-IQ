@@ -90,6 +90,13 @@ class Settings(BaseSettings):
     NOTIFY_EMAIL: Optional[str] = None
     NOTIFY_FROM_EMAIL: Optional[str] = None
 
+    # Ecosystem Integrations (Option C: Klaviyo & Gorgias)
+    KLAVIYO_API_KEY: Optional[SecretStr] = None
+    KLAVIYO_COMPANY_ID: Optional[str] = None
+    GORGIAS_DOMAIN: Optional[str] = None
+    GORGIAS_EMAIL: Optional[str] = None
+    GORGIAS_API_KEY: Optional[SecretStr] = None
+
     @model_validator(mode="after")
     def validate_production_settings(self):
         if self.ENV == Environment.PRODUCTION:

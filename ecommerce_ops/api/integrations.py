@@ -284,3 +284,107 @@ async def test_webhook(
     if not delivered:
         raise HTTPException(status_code=502, detail="Test delivery failed")
     return {"status": "delivered", "id": webhook_id}
+
+
+# ── Ecosystem Bridges (Klaviyo & Gorgias) ──────────────────
+
+
+class KlaviyoTestRequest(BaseModel):
+    customer_email: str = "test.shopper@example.com"
+    cart_id: str = "cart_test_101"
+    cart_total: float = 89.99
+    discount_code: str = "OPSIQ-TEST"
+
+
+class GorgiasTestRequest(BaseModel):
+    ticket_id: Optional[str] = None
+    customer_email: Optional[str] = "support.customer@example.com"
+    subject: str = "Test Inquiry"
+    message: str = "OpsIQ AI draft recommendation test message"
+
+
+@router.get("/ecosystem-status")
+async def get_ecosystem_status(
+    _: User = Depends(require_permission(Permission.INTEGRATIONS_MANAGE)),
+):
+    """Check connectivity and configuration status for Klaviyo, Gorgias, and Slack."""
+    from ecommerce_ops.config import settings as app_settings
+
+    return {
+        "klaviyo": {
+            "configured": bool(app_settings.KLAVIYO_API_KEY),
+            "company_id": app_settings.KLAVIYO_COMPANY_ID,
+        },
+        "gorgias": {
+            "configured": bool(
+                app_settings.GORGIAS_DOMAIN
+                and app_settings.GORGIAS_EMAIL
+                and app_settings.GORGIAS_API_KEY
+            ),
+            "domain": app_settings.GORGIAS_DOMAIN,
+            "email": app_settings.GORGIAS_EMAIL,
+        },
+        "slack": {
+            "configured": bool(
+                app_settings.SLACK_WEBHOOK_URL or app_settings.SLACK_BOT_TOKEN
+            ),
+            "channel": app_settings.SLACK_CHANNEL or "#general",
+            "has_signing_secret": bool(app_settings.SLACK_SIGNING_SECRET),
+        },
+    }
+
+
+@router.post("/klaviyo/test")
+async def test_klaviyo_event_bridge(
+    req: KlaviyoTestRequest = KlaviyoTestRequest(),
+    _: User = Depends(require_permission(Permission.INTEGRATIONS_MANAGE)),
+):
+    """Test tracking an event in Klaviyo via the Event Bridge."""
+    from ecommerce_ops.connectors.klaviyo import KlaviyoClient
+
+    client = KlaviyoClient()
+    try:
+        res = await client.trigger_cart_recovery(
+            customer_email=req.customer_email,
+            cart_id=req.cart_id,
+            cart_total=req.cart_total,
+            discount_code=req.discount_code,
+        )
+        return {
+            "status": "success",
+            "klaviyo_configured": client.is_configured,
+            "response": res,
+        }
+    finally:
+        await client.close()
+
+
+@router.post("/gorgias/test")
+async def test_gorgias_bridge(
+    req: GorgiasTestRequest = GorgiasTestRequest(),
+    _: User = Depends(require_permission(Permission.INTEGRATIONS_MANAGE)),
+):
+    """Test creating a ticket or adding an internal note in Gorgias."""
+    from ecommerce_ops.connectors.gorgias import GorgiasClient
+
+    client = GorgiasClient()
+    try:
+        if req.ticket_id:
+            res = await client.add_internal_note(req.ticket_id, req.message)
+            action_done = "internal_note_added"
+        else:
+            res = await client.create_ticket(
+                customer_email=req.customer_email or "test@example.com",
+                subject=req.subject,
+                message_body=req.message,
+            )
+            action_done = "ticket_created"
+
+        return {
+            "status": "success",
+            "action": action_done,
+            "gorgias_configured": client.is_configured,
+            "response": res,
+        }
+    finally:
+        await client.close()

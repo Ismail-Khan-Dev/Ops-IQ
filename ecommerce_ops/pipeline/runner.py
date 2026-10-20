@@ -298,8 +298,8 @@ ACTION_TYPE_AGENT_ALLOWLIST: dict[str, set[str]] = {
     "marketing_campaign": {"MarketingAgent", "marketing_automation", "marketing"},
     "order_swap": {"OrderSwapsAgent", "order_swaps"},
     "return_risk_flag": {"SmartReturnsAgent", "smart_returns"},
-    "cart_recovery": {"AbandonedCartAgent", "cart_recovery"},
-    "support_response": {"CustomerSupportAgent", "customer_support"},
+    "cart_recovery": {"AbandonedCartAgent", "cart_recovery", "manual_operator", "system"},
+    "support_response": {"CustomerSupportAgent", "customer_support", "manual_operator", "system"},
 }
 
 
@@ -588,11 +588,103 @@ async def execute_shop_action(action: ApprovalAction) -> tuple[bool, str]:
 
         if action.action_type == "cart_recovery":
             cart_id = payload.get("cart_id")
-            return True, f"Cart recovery strategy recorded for cart {cart_id}"
+            customer_email = payload.get("customer_email") or payload.get("email")
+            total_value = payload.get("total_value", payload.get("cart_total", 0.0))
+            discount_code = payload.get("discount_code")
+            discount_value = payload.get("discount_value", 10.0)
+            strategy = payload.get("strategy", "discount_urgency")
+            checkout_url = payload.get("checkout_url", "")
+
+            # 1. Create discount code on Shopify so the coupon works at checkout
+            if discount_code:
+                try:
+                    rule_title = f"OpsIQ Cart Recovery {cart_id}"
+                    price_rule = await client.create_price_rule(
+                        {
+                            "title": rule_title,
+                            "target_type": "line_item",
+                            "target_selection": "all",
+                            "allocation_method": "across",
+                            "value_type": "percentage",
+                            "value": f"-{float(discount_value):g}",
+                            "customer_selection": "all",
+                            "starts_at": utc_now().isoformat(timespec="seconds") + "Z",
+                        }
+                    )
+                    rule_id = str(
+                        price_rule.get("price_rule", {}).get("id") or price_rule.get("id", "")
+                    )
+                    if rule_id:
+                        await client.create_discount_code(rule_id, str(discount_code))
+                except Exception as e:
+                    logger.warning("Could not auto-create Shopify discount for cart %s: %s", cart_id, e)
+
+            # 2. Klaviyo Event Bridge: Dispatch event to trigger retention/SMS/Email flow
+            from ecommerce_ops.connectors.klaviyo import KlaviyoClient
+
+            klaviyo = KlaviyoClient()
+            try:
+                if customer_email:
+                    await klaviyo.trigger_cart_recovery(
+                        customer_email=str(customer_email),
+                        cart_id=str(cart_id),
+                        cart_total=float(total_value or 0.0),
+                        discount_code=discount_code,
+                        discount_value=float(discount_value or 0.0),
+                        checkout_url=checkout_url,
+                        recovery_strategy=strategy,
+                    )
+            finally:
+                await klaviyo.close()
+
+            logger.info("Triggered Klaviyo cart recovery flow for %s (cart: %s)", customer_email, cart_id)
+            return True, f"Dispatched Klaviyo cart recovery for cart {cart_id} ({customer_email or 'anonymous'})"
 
         if action.action_type == "support_response":
             ticket_id = payload.get("ticket_id")
-            return True, f"Support ticket response drafted for ticket {ticket_id}"
+            draft = (
+                payload.get("draft_response")
+                or payload.get("response")
+                or payload.get("resolution")
+                or ""
+            )
+            sentiment = payload.get("sentiment", "neutral")
+            customer_email = payload.get("customer_email") or payload.get("email")
+            urgency = payload.get("urgency", "normal")
+
+            from ecommerce_ops.connectors.gorgias import GorgiasClient
+
+            gorgias = GorgiasClient()
+            try:
+                if ticket_id:
+                    # Post internal note to existing Gorgias ticket with AI draft recommendation
+                    note_text = (
+                        f"🤖 OpsIQ Customer Support Recommendation:\n"
+                        f"• Sentiment: {sentiment.upper()} | Urgency: {urgency.upper()}\n"
+                        f"• Proposed Draft:\n{draft}"
+                    )
+                    await gorgias.add_internal_note(ticket_id, note_text)
+                    await gorgias.update_ticket_tags(
+                        ticket_id, ["opsiq-ai-draft", f"sentiment-{sentiment}"]
+                    )
+                    msg = f"Injected OpsIQ draft note and tags into Gorgias ticket #{ticket_id}"
+                elif customer_email:
+                    # Create new ticket in Gorgias
+                    subject = payload.get("subject") or f"Support Request from {customer_email}"
+                    await gorgias.create_ticket(
+                        customer_email=str(customer_email),
+                        subject=subject,
+                        message_body=draft,
+                        tags=["opsiq-ai-draft", f"sentiment-{sentiment}"],
+                    )
+                    msg = f"Created Gorgias ticket for {customer_email} with AI response draft"
+                else:
+                    msg = f"Support ticket response recorded for review (draft length: {len(draft)} chars)"
+            finally:
+                await gorgias.close()
+
+            logger.info("Executed Gorgias bridge action for ticket: %s", ticket_id)
+            return True, msg
 
         return False, f"Unknown action type: {action.action_type}"
     except Exception as e:

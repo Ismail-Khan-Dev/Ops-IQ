@@ -226,6 +226,8 @@ def build_payload_and_evidence(d, reviews_data: List[Dict]) -> tuple:
             "total_value": _try_float(d.action_data.get("total_value")),
             "strategy": d.action_data.get("strategy") or UNKNOWN,
             "discount_code": d.action_data.get("discount_code") or None,
+            "discount_value": _try_float(d.action_data.get("discount_value", 10.0)),
+            "checkout_url": d.action_data.get("checkout_url") or "",
             "estimated_revenue": _try_float(d.action_data.get("estimated_revenue")),
             "reasoning": d.reasoning,
         }
@@ -242,17 +244,32 @@ def build_payload_and_evidence(d, reviews_data: List[Dict]) -> tuple:
                 "weight": "supporting",
                 "source": "AbandonedCartAgent",
             },
+            {
+                "label": "Klaviyo Bridge",
+                "value": "OpsIQ Retention Flow Trigger",
+                "weight": "supporting",
+                "source": "KlaviyoAPI",
+            },
         ]
         return payload, evidence
 
     if d.agent_id in ("CustomerSupportAgent", "customer_support"):
+        suggested = (
+            d.action_data.get("suggested_response")
+            or d.action_data.get("draft_response")
+            or d.action_data.get("resolution")
+            or "Draft response..."
+        )
         payload = {
             "ticket_id": d.action_data.get("ticket_id", "ticket-unknown"),
             "customer_email": d.action_data.get("customer_email") or UNKNOWN,
             "subject": d.action_data.get("subject") or "Support Request",
             "category": d.action_data.get("category") or UNKNOWN,
             "priority": d.action_data.get("priority") or "medium",
-            "suggested_response": d.action_data.get("suggested_response") or "Draft response...",
+            "sentiment": d.action_data.get("sentiment") or "neutral",
+            "urgency": d.action_data.get("urgency") or d.action_data.get("priority") or "normal",
+            "suggested_response": suggested,
+            "draft_response": suggested,
             "reasoning": d.reasoning,
         }
         evidence = [
@@ -267,6 +284,12 @@ def build_payload_and_evidence(d, reviews_data: List[Dict]) -> tuple:
                 "value": payload["suggested_response"][:80],
                 "weight": "supporting",
                 "source": "CustomerSupportAgent",
+            },
+            {
+                "label": "Gorgias Helpdesk",
+                "value": "Internal Note & Tag Injection",
+                "weight": "supporting",
+                "source": "GorgiasAPI",
             },
         ]
         return payload, evidence
