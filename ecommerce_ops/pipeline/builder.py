@@ -170,12 +170,16 @@ def build_payload_and_evidence(d, reviews_data: List[Dict]) -> tuple:
     if d.agent_id in ("OrderSwapsAgent", "order_swaps"):
         payload = {
             "order_id": d.action_data.get("order_id", "ORD-UNKNOWN"),
+            "customer_email": d.action_data.get("customer_email") or None,
             "original_sku": d.action_data.get("original_sku") or UNKNOWN,
             "original_name": d.action_data.get("original_name") or None,
             "swap_sku": d.action_data.get("swap_sku") or UNKNOWN,
             "swap_name": d.action_data.get("swap_name") or None,
             "swap_price": _try_float(d.action_data.get("swap_price")),
             "price_difference": _try_float(d.action_data.get("price_difference")),
+            "preserved_gmv": _try_float(d.action_data.get("preserved_gmv")),
+            "preserved_margin": _try_float(d.action_data.get("preserved_margin")),
+            "margin_delta": _try_float(d.action_data.get("margin_delta")),
             "reasoning": d.reasoning,
         }
         evidence = [
@@ -191,6 +195,12 @@ def build_payload_and_evidence(d, reviews_data: List[Dict]) -> tuple:
                 "weight": "supporting",
                 "source": "OrderSwapsAgent",
             },
+            {
+                "label": "Preserved Margin",
+                "value": f"${payload['preserved_margin']:.2f}" if payload["preserved_margin"] is not None else "Active",
+                "weight": "supporting",
+                "source": "MarginPreservationCalculator",
+            },
         ]
         return payload, evidence
 
@@ -198,8 +208,13 @@ def build_payload_and_evidence(d, reviews_data: List[Dict]) -> tuple:
         risk = _try_float(d.action_data.get("return_risk"))
         payload = {
             "order_id": d.action_data.get("order_id", "ORD-UNKNOWN"),
+            "customer_email": d.action_data.get("customer_email") or None,
             "return_risk": risk,
             "risk_level": d.action_data.get("risk_level") or UNKNOWN,
+            "strategy": d.action_data.get("strategy") or "standard",
+            "preserved_margin": _try_float(d.action_data.get("preserved_margin")),
+            "reverse_costs_saved": _try_float(d.action_data.get("reverse_costs_saved")),
+            "total_physical_return_cost": _try_float(d.action_data.get("total_physical_return_cost")),
             "preventive_actions": d.action_data.get("preventive_actions") or [],
             "reasoning": d.reasoning,
         }
@@ -211,10 +226,16 @@ def build_payload_and_evidence(d, reviews_data: List[Dict]) -> tuple:
                 "source": "SmartReturnsAgent",
             },
             {
-                "label": "Risk Level",
-                "value": str(payload["risk_level"]),
+                "label": "Strategy",
+                "value": str(payload["strategy"]).upper(),
+                "weight": "primary",
+                "source": "MarginPreservationCalculator",
+            },
+            {
+                "label": "Preserved Margin",
+                "value": f"${payload['preserved_margin']:.2f}" if payload["preserved_margin"] is not None else "N/A",
                 "weight": "supporting",
-                "source": "SmartReturnsAgent",
+                "source": "MarginPreservationCalculator",
             },
         ]
         return payload, evidence

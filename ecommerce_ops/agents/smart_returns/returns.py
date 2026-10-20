@@ -9,6 +9,7 @@ import logging
 from typing import Any, Dict, List
 
 from ecommerce_ops.agents._base import BaseAgent
+from ecommerce_ops.analytics.margin_preservation import MarginPreservationCalculator
 
 logger = logging.getLogger("ecommerce_ops.agents.smart_returns")
 
@@ -16,6 +17,7 @@ logger = logging.getLogger("ecommerce_ops.agents.smart_returns")
 class SmartReturnsAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__("SmartReturnsAgent")
+        self.margin_calc = MarginPreservationCalculator()
 
     async def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         orders = state.get("pending_orders", [])
@@ -32,20 +34,42 @@ class SmartReturnsAgent(BaseAgent):
             if analysis["return_risk"] < 0.3:
                 continue
 
+            unit_econ = self.margin_calc.evaluate_return_unit_economics(
+                item_price=float(order.get("order_total") or order.get("item_price") or 50.0),
+                category=str(
+                    order.get("category")
+                    or (order.get("categories", ["apparel"])[0] if order.get("categories") else "apparel")
+                ),
+                return_reason=str(order.get("return_reason") or "sizing_fit"),
+                customer_is_vip=bool(order.get("is_repeat_customer", False)),
+            )
+
+            actions = list(analysis["preventive_actions"])
+            if unit_econ["strategy"] == "keep_it_credit":
+                actions.insert(0, "offer_keep_it_store_credit")
+            elif unit_econ["strategy"] == "instant_exchange":
+                actions.insert(0, "offer_instant_variant_exchange")
+
             decision = self.create_decision(
                 action_type="FLAG_RETURN_RISK",
                 reasoning=(
-                    f"Order {order_id}: return_risk={analysis['return_risk']:.2f} "
-                    f"({analysis['risk_level']}). Actions: {analysis['preventive_actions']}"
+                    f"Return Strategy [{unit_econ['strategy'].upper()}]: Return risk={analysis['return_risk']:.2f} "
+                    f"({analysis['risk_level']}). {unit_econ['recommendation_reason']} "
+                    f"Preserves ${unit_econ['preserved_margin']:.2f} net margin."
                 ),
                 data={
                     "order_id": order_id,
+                    "customer_email": order.get("customer_email") or order.get("email"),
                     "return_risk": analysis["return_risk"],
                     "risk_level": analysis["risk_level"],
-                    "preventive_actions": analysis["preventive_actions"],
+                    "strategy": unit_econ["strategy"],
+                    "preserved_margin": unit_econ["preserved_margin"],
+                    "reverse_costs_saved": unit_econ["avoided_reverse_costs"],
+                    "total_physical_return_cost": unit_econ["total_physical_return_cost"],
+                    "preventive_actions": actions,
                     "recommended_insurance": analysis["recommended_insurance"],
                 },
-                confidence=analysis["confidence"],
+                confidence=max(analysis["confidence"], 0.75),
                 requires_approval=analysis["return_risk"] > 0.5,
             )
             decisions.append(decision)

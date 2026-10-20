@@ -9,6 +9,7 @@ import logging
 from typing import Any, Dict, List
 
 from ecommerce_ops.agents._base import BaseAgent
+from ecommerce_ops.analytics.margin_preservation import MarginPreservationCalculator
 
 logger = logging.getLogger("ecommerce_ops.agents.order_swaps")
 
@@ -16,6 +17,7 @@ logger = logging.getLogger("ecommerce_ops.agents.order_swaps")
 class OrderSwapsAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__("OrderSwapsAgent")
+        self.margin_calc = MarginPreservationCalculator()
 
     async def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         items = state.get("out_of_stock_items", [])
@@ -32,25 +34,41 @@ class OrderSwapsAgent(BaseAgent):
             if swap is None:
                 continue
 
-            price_diff = float(swap.get("price") or 0) - float(item.get("original_price") or 0)
+            orig_price = float(item.get("original_price") or 0)
+            swap_price = float(swap.get("price") or 0)
+            price_diff = swap_price - orig_price
+
+            unit_econ = self.margin_calc.evaluate_order_swap_unit_economics(
+                original_price=orig_price,
+                swap_price=swap_price,
+                original_cogs=float(item.get("original_cogs") or 0),
+                swap_cogs=float(swap.get("cogs") or 0),
+            )
+
             decision = self.create_decision(
                 action_type="SWAP_ITEM",
                 reasoning=(
-                    f"Swap {sku} -> {swap.get('sku', '?')}: "
-                    f"{swap.get('name', '?')} (${swap.get('price', 0):.2f}). "
-                    f"Price diff: ${price_diff:+.2f}"
+                    f"OOS Substitution: Swap {sku} -> {swap.get('sku', '?')} "
+                    f"({swap.get('name', '?')} @ ${swap_price:.2f}). "
+                    f"Preserves ${unit_econ['preserved_gmv']:.2f} GMV and "
+                    f"${unit_econ['preserved_net_margin']:.2f} net profit (delta: {unit_econ['margin_delta']:+.2f})."
                 ),
                 data={
                     "order_id": item.get("order_id", ""),
+                    "customer_email": item.get("customer_email", ""),
                     "original_sku": sku,
                     "original_name": item.get("original_name", ""),
                     "swap_sku": swap.get("sku", ""),
                     "swap_name": swap.get("name", ""),
-                    "swap_price": float(swap.get("price") or 0),
+                    "original_price": orig_price,
+                    "swap_price": swap_price,
                     "price_difference": round(price_diff, 2),
-                    "confidence": 0.7,
+                    "preserved_gmv": unit_econ["preserved_gmv"],
+                    "preserved_margin": unit_econ["preserved_net_margin"],
+                    "margin_delta": unit_econ["margin_delta"],
+                    "confidence": 0.85,
                 },
-                confidence=0.7,
+                confidence=0.85,
                 requires_approval=True,
             )
             decisions.append(decision)

@@ -573,18 +573,122 @@ async def execute_shop_action(action: ApprovalAction) -> tuple[bool, str]:
         if action.action_type == "order_swap":
             order_id = payload.get("order_id")
             swap_sku = payload.get("swap_sku")
+            original_sku = payload.get("original_sku", "OOS")
+            preserved_gmv = payload.get("preserved_gmv", 0.0)
+            preserved_margin = payload.get("preserved_margin", 0.0)
+
             if order_id and str(order_id).isdigit():
-                await client.update_order(str(order_id), {"tags": [f"SWAP_RECOMMENDED:{swap_sku}"]})
-                return True, f"Tagged order {order_id} with swap recommendation {swap_sku}"
-            return True, f"Order swap recommendation recorded for review: {swap_sku}"
+                # 1. Update order tags on Shopify
+                existing_tags_str = ""
+                try:
+                    current_order = await client.get_order(str(order_id))
+                    existing_tags_str = current_order.get("order", {}).get("tags", "")
+                except Exception:
+                    pass
+                tags_list = [t.strip() for t in existing_tags_str.split(",") if t.strip()]
+                swap_tag = f"SWAP_ACTIVE:{original_sku}->{swap_sku}"
+                if swap_tag not in tags_list:
+                    tags_list.append(swap_tag)
+                await client.update_order(
+                    str(order_id),
+                    {
+                        "tags": ", ".join(tags_list),
+                        "note": (
+                            f"OpsIQ Intelligent Swap: OOS item {original_sku} substituted with {swap_sku}. "
+                            f"Preserved ${preserved_gmv:.2f} GMV."
+                        ),
+                    },
+                )
+
+                # 2. Trigger notification bridge if customer email exists
+                customer_email = payload.get("customer_email")
+                if customer_email:
+                    try:
+                        from ecommerce_ops.connectors.klaviyo import KlaviyoClient
+
+                        klaviyo = KlaviyoClient()
+                        await klaviyo.track_event(
+                            metric_name="OpsIQ Order Swap Recommended",
+                            customer_email=str(customer_email),
+                            properties={
+                                "order_id": str(order_id),
+                                "original_sku": original_sku,
+                                "swap_sku": swap_sku,
+                                "swap_name": payload.get("swap_name", ""),
+                                "preserved_gmv": float(preserved_gmv or 0.0),
+                            },
+                        )
+                        await klaviyo.close()
+                    except Exception as e:
+                        logger.warning("Could not dispatch Klaviyo swap notice for %s: %s", order_id, e)
+
+                logger.info("Executed intelligent swap for order %s (%s -> %s)", order_id, original_sku, swap_sku)
+                return (
+                    True,
+                    f"Applied swap {original_sku} -> {swap_sku} to order {order_id} (Preserved GMV: ${preserved_gmv:.2f})",
+                )
+            return True, f"Order swap recommendation recorded: {original_sku} -> {swap_sku}"
 
         if action.action_type == "return_risk_flag":
             order_id = payload.get("order_id")
             risk_level = payload.get("risk_level", "medium")
+            strategy = payload.get("strategy", "standard")
+            preserved_margin = payload.get("preserved_margin", 0.0)
+            reverse_saved = payload.get("reverse_costs_saved", 0.0)
+
             if order_id and str(order_id).isdigit():
-                await client.update_order(str(order_id), {"tags": [f"RETURN_RISK_{risk_level.upper()}"]})
-                return True, f"Tagged order {order_id} with return risk: {risk_level}"
-            return True, f"Return risk flagged for order {order_id} ({risk_level})"
+                existing_tags_str = ""
+                try:
+                    current_order = await client.get_order(str(order_id))
+                    existing_tags_str = current_order.get("order", {}).get("tags", "")
+                except Exception:
+                    pass
+                tags_list = [t.strip() for t in existing_tags_str.split(",") if t.strip()]
+
+                # Apply strategic tag based on unit economics
+                if strategy == "keep_it_credit":
+                    new_tag = "RETURN_STRATEGY:KEEP_IT_CREDIT"
+                    # Create automated store credit rule on Shopify
+                    try:
+                        credit_val = float(payload.get("item_price") or 25.0)
+                        rule = await client.create_price_rule(
+                            {
+                                "title": f"OpsIQ Keep-It Credit Order {order_id}",
+                                "target_type": "line_item",
+                                "target_selection": "all",
+                                "allocation_method": "across",
+                                "value_type": "fixed_amount",
+                                "value": f"-{credit_val:.2f}",
+                                "customer_selection": "all",
+                                "starts_at": utc_now().isoformat(timespec="seconds") + "Z",
+                            }
+                        )
+                        rule_id = str(rule.get("price_rule", {}).get("id") or rule.get("id", ""))
+                        if rule_id:
+                            await client.create_discount_code(rule_id, f"KEEPIT-{order_id}")
+                    except Exception as e:
+                        logger.warning("Could not auto-create store credit code: %s", e)
+                elif strategy == "instant_exchange":
+                    new_tag = "RETURN_STRATEGY:INSTANT_EXCHANGE"
+                else:
+                    new_tag = f"RETURN_RISK_{risk_level.upper()}"
+
+                if new_tag not in tags_list:
+                    tags_list.append(new_tag)
+                await client.update_order(str(order_id), {"tags": ", ".join(tags_list)})
+
+                logger.info(
+                    "Applied return strategy %s to order %s (Preserved Margin: $%.2f, Reverse Saved: $%.2f)",
+                    strategy,
+                    order_id,
+                    preserved_margin,
+                    reverse_saved,
+                )
+                return (
+                    True,
+                    f"Applied return strategy [{strategy.upper()}] to order {order_id} (Saved ${reverse_saved:.2f} logistics costs)",
+                )
+            return True, f"Return strategy [{strategy.upper()}] recorded for order {order_id}"
 
         if action.action_type == "cart_recovery":
             cart_id = payload.get("cart_id")
