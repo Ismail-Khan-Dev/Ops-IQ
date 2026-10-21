@@ -352,6 +352,15 @@ pytest tests/ -q -o addopts="" -p no:cacheprovider
 # Run specific Phase 4 App Store Launch verification
 pytest tests/test_phase4_launch.py -v
 
+# Run Native E-Commerce MCP Server tests
+pytest tests/test_mcp_server.py -v
+
+# Run Meta Ads OOS Auto-Pause Guardian tests
+pytest tests/test_ad_spend_guardian.py -v
+
+# Run Wardrobing Shield & Up-Exchange Engine tests
+pytest tests/test_killer_features.py -v
+
 # Run Phase 3 Margin Preservation & Intelligent Swaps tests
 pytest tests/test_margin_preservation.py -v
 
@@ -382,8 +391,17 @@ All endpoints are versioned under `/api/v1` and protected by RBAC middleware:
 
 ### High-ROI Margin Preservation Analytics
 - `GET /api/v1/roi/margin-preservation` — Real-time aggregate dashboard of preserved GMV, avoided logistics fees, and software ROI multiple.
+- `GET /api/v1/roi/live-widget` — Live preserved margin counter and embeddable SVG/HTML badge for Shopify Admin.
+- `POST /api/v1/roi/wardrobing/evaluate` — Evaluates orders for multi-size bracketing and serial return abuse.
+- `POST /api/v1/roi/up-exchange/negotiate` — Generates win-win Keep-It Sweetener Bundles & Tier-Up Upgrades before cash refund.
 - `POST /api/v1/roi/returns/evaluate` — Unit economics evaluation for return requests (`keep_it_credit` vs `instant_exchange` vs `standard_return`).
 - `POST /api/v1/roi/swaps/evaluate` — Financial delta evaluation for out-of-stock product substitutions.
+
+### Ad-Spend Bleed Stopper (Meta Ads Sync)
+- `POST /api/v1/marketing/meta/sync-inventory` — Scans SKU stock against Meta ad sets; auto-pauses ads on 0-stock products.
+- `GET /api/v1/marketing/meta/saved-spend` — Real-time metrics on daily and cumulative advertising dollars saved.
+- `POST /api/v1/marketing/meta/pause-adset` — Manual override to pause an ad set.
+- `POST /api/v1/marketing/meta/unpause-adset` — Manual override to reactivate an ad set.
 
 ### 3PL Fulfillment Orders Interceptor
 - `GET /api/v1/shopify/orders/{order_id}/fulfillment-orders` — Inspect live warehouse fulfillment orders.
