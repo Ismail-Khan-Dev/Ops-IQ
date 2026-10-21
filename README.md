@@ -195,6 +195,20 @@ OpsIQ solves this with an ironclad **Defense-in-Depth Architecture**:
 - **Auto-Reactivation on Restock:** As soon as inventory is replenished via purchase order or return, OpsIQ automatically reactivates the ad set so your sales momentum never stops.
 - **Avoided Spend Counter:** Real-time metrics show exactly how many daily advertising dollars were saved during the out-of-stock window.
 
+### 8. 👗 The "Bracketing / Wardrobing" Anti-Abuse Shield
+- **Eliminate Multi-Size Returns Before They Ship:** In apparel, shoppers frequently buy 3 sizes of the same dress to try at home and return 2, causing 35%+ return rates.
+- **Proactive Sizing Defense:** OpsIQ flags duplicate style ordering in real time, triggering proactive 1-click fit confirmations with $10 instant store credits.
+- **Serial Abuser Deterrent:** Automatically revokes prepaid free return labels for chronic bracket returners, cutting return logistics costs by 18-22%.
+
+### 9. 🎁 The "Post-Purchase Up-Exchange" AI Negotiation Engine
+- **Turn 30% of Return Requests into Upsells:** Surrendering to cash refunds destroys 100% of customer GMV. OpsIQ negotiates returns using high-margin warehouse deadstock.
+- **Keep-It Sweeteners:** *"Keep your $80 jacket + get our $45 cashmere scarf for just $15 extra!"* (Preserves the $80 sale + brings in $15 new cash).
+- **Tier-Up Upgrades:** Offers discounted upgrade differences to trade up to premium catalog tiers.
+
+### 10. 💰 Live "Preserved Margin" Counter & Shopify Admin Badge
+- **Proof of Value in Shopify Admin:** An embeddable real-time badge widget showing the exact net dollars preserved across fraud holds, return avoidance, swaps, and ad budget protection.
+- Eliminates software churn by proving 5x-14x ROI directly on the merchant's home screen.
+
 ---
 
 ## 💳 Pilot Onboarding & Pricing

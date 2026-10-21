@@ -15,6 +15,8 @@ from ecommerce_ops.connectors.shopify.onboarding import PilotOnboardingEngine
 from ecommerce_ops.marketing.ad_spend_guardian import AdSpendGuardian
 from ecommerce_ops.mcp.protocol import MCPTool
 from ecommerce_ops.models import ApprovalAction, ShopifyProductSnapshot, async_session_factory
+from ecommerce_ops.returns.up_exchange import UpExchangeEngine
+from ecommerce_ops.returns.wardrobing_shield import WardrobingShield
 
 logger = logging.getLogger("ecommerce_ops.mcp.tools")
 
@@ -170,6 +172,39 @@ TOOLS: List[MCPTool] = [
             },
         },
     ),
+    MCPTool(
+        name="opsiq_detect_bracketing_risk",
+        description=(
+            "Detects wardrobing and multi-size/color bracketing in an order. "
+            "Computes return probability and generates proactive sizing fit verification strategies."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "order": {"type": "object", "description": "Order payload containing line_items and total"},
+                "historical_return_rate": {"type": "number", "description": "Customer return rate (0.0-1.0)"},
+                "previous_returns_count": {"type": "integer", "description": "Customer prior returns count"},
+            },
+            "required": ["order"],
+        },
+    ),
+    MCPTool(
+        name="opsiq_generate_up_exchange_offer",
+        description=(
+            "Generates win-win AI up-exchange offers (Keep-It Sweetener Bundles or Tier-Up Upgrades) "
+            "to prevent cash refund leakage and retain customer GMV."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "item_price": {"type": "number", "description": "Price of returned item"},
+                "title": {"type": "string", "description": "Product title", "default": "Purchased Item"},
+                "category": {"type": "string", "description": "Product category", "default": "apparel"},
+                "return_reason": {"type": "string", "description": "Customer reason", "default": "sizing_fit"},
+            },
+            "required": ["item_price"],
+        },
+    ),
 ]
 
 
@@ -290,6 +325,21 @@ async def execute_tool(name: str, arguments: Dict[str, Any]) -> Any:
             inventory_items=inventory_data,
             oos_threshold=int(arguments.get("oos_threshold", 0)),
             auto_execute=bool(arguments.get("auto_execute", True)),
+        )
+
+    elif name == "opsiq_detect_bracketing_risk":
+        return WardrobingShield.detect_bracketing(
+            order=arguments["order"],
+            historical_return_rate=arguments.get("historical_return_rate"),
+            previous_returns_count=int(arguments.get("previous_returns_count", 0)),
+        )
+
+    elif name == "opsiq_generate_up_exchange_offer":
+        return UpExchangeEngine.generate_up_exchange_offers(
+            item_price=float(arguments["item_price"]),
+            title=arguments.get("title", "Purchased Item"),
+            category=arguments.get("category", "apparel"),
+            return_reason=arguments.get("return_reason", "sizing_fit"),
         )
 
     raise ValueError(f"Unknown MCP tool: {name}")

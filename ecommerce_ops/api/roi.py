@@ -13,6 +13,9 @@ from sqlalchemy import select
 
 from ecommerce_ops.analytics.margin_preservation import MarginPreservationCalculator
 from ecommerce_ops.models import ApprovalAction, async_session_factory
+from ecommerce_ops.returns.live_margin_widget import LiveMarginWidget
+from ecommerce_ops.returns.up_exchange import UpExchangeEngine
+from ecommerce_ops.returns.wardrobing_shield import WardrobingShield
 from ecommerce_ops.security.auth import require_permission
 from ecommerce_ops.security.models import Permission, User
 
@@ -34,6 +37,19 @@ class SwapEvaluationRequest(BaseModel):
     swap_price: float = Field(..., gt=0.0, description="Price of proposed substitution item")
     original_cogs: Optional[float] = Field(None, ge=0.0)
     swap_cogs: Optional[float] = Field(None, ge=0.0)
+
+
+class WardrobingEvaluationRequest(BaseModel):
+    order: Dict[str, Any] = Field(..., description="Order payload containing line items")
+    historical_return_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
+    previous_returns_count: int = Field(0, ge=0)
+
+
+class UpExchangeRequest(BaseModel):
+    item_price: float = Field(..., gt=0.0, description="MSRP of returning item")
+    title: str = Field("Purchased Item", description="Product title")
+    category: str = Field("apparel", description="Product category")
+    return_reason: str = Field("sizing_fit", description="Customer reason for return")
 
 
 @router.get("/margin-preservation")
@@ -81,3 +97,38 @@ async def evaluate_swap_economics(
         original_cogs=req.original_cogs,
         swap_cogs=req.swap_cogs,
     )
+
+
+@router.post("/wardrobing/evaluate")
+async def evaluate_wardrobing_risk(
+    req: WardrobingEvaluationRequest,
+    _: User = Depends(require_permission(Permission.OBSERVABILITY_VIEW)),
+):
+    """Detect order bracketing / multi-size purchasing patterns."""
+    return WardrobingShield.detect_bracketing(
+        order=req.order,
+        historical_return_rate=req.historical_return_rate,
+        previous_returns_count=req.previous_returns_count,
+    )
+
+
+@router.post("/up-exchange/negotiate")
+async def generate_up_exchange(
+    req: UpExchangeRequest,
+    _: User = Depends(require_permission(Permission.OBSERVABILITY_VIEW)),
+):
+    """Generate high-converting Keep-It Sweetener and Tier-Up Upgrade offers before cash refund."""
+    return UpExchangeEngine.generate_up_exchange_offers(
+        item_price=req.item_price,
+        title=req.title,
+        category=req.category,
+        return_reason=req.return_reason,
+    )
+
+
+@router.get("/live-widget")
+async def get_live_margin_widget(
+    _: User = Depends(require_permission(Permission.OBSERVABILITY_VIEW)),
+):
+    """Fetch live preserved margin metrics and embeddable Shopify Admin badge."""
+    return await LiveMarginWidget.get_live_margin_summary()
