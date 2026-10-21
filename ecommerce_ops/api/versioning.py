@@ -44,6 +44,7 @@ def create_v1_router(
     slack_router=None,
     roi_router=None,
     onboarding_router=None,
+    marketing_router=None,
 ) -> APIRouter:
     """Create a versioned API router with all v1 endpoints.
 
@@ -67,6 +68,8 @@ def create_v1_router(
         v1.include_router(roi_router, tags=["v1"])
     if onboarding_router is not None:
         v1.include_router(onboarding_router, tags=["v1"])
+    if marketing_router is not None:
+        v1.include_router(marketing_router, tags=["v1"])
     if core_router is not None:
         v1.include_router(core_router, tags=["v1"])
 

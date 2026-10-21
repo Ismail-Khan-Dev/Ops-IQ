@@ -27,6 +27,7 @@ from ecommerce_ops.api.metrics import (
 from ecommerce_ops.api.middleware import setup_middleware
 from ecommerce_ops.api.observability import router as observability_router
 from ecommerce_ops.api.onboarding import router as onboarding_router
+from ecommerce_ops.api.marketing import router as marketing_router
 from ecommerce_ops.api.roi import router as roi_router
 from ecommerce_ops.api.security import router as security_router
 from ecommerce_ops.api.shopify import router as shopify_router
@@ -309,6 +310,10 @@ app.include_router(roi_router)
 app.include_router(onboarding_router, prefix="/api")
 app.include_router(onboarding_router)
 
+# Include Marketing & Ad-Spend Guardian routes
+app.include_router(marketing_router, prefix="/api")
+app.include_router(marketing_router)
+
 # Include Core routes (approvals, agents, settings, analytics, health)
 app.include_router(core_router, prefix="/api")
 
@@ -326,6 +331,7 @@ v1_router = create_v1_router(
     slack_router=slack_router,
     roi_router=roi_router,
     onboarding_router=onboarding_router,
+    marketing_router=marketing_router,
 )
 app.include_router(v1_router)
 app.add_middleware(APIVersionMiddleware)

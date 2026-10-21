@@ -12,8 +12,9 @@ from sqlalchemy import select
 from ecommerce_ops.analytics.margin_preservation import MarginPreservationCalculator
 from ecommerce_ops.connectors.shopify.fulfillment_interceptor import FulfillmentHoldInterceptor
 from ecommerce_ops.connectors.shopify.onboarding import PilotOnboardingEngine
+from ecommerce_ops.marketing.ad_spend_guardian import AdSpendGuardian
 from ecommerce_ops.mcp.protocol import MCPTool
-from ecommerce_ops.models import ApprovalAction, async_session_factory
+from ecommerce_ops.models import ApprovalAction, ShopifyProductSnapshot, async_session_factory
 
 logger = logging.getLogger("ecommerce_ops.mcp.tools")
 
@@ -146,6 +147,29 @@ TOOLS: List[MCPTool] = [
             },
         },
     ),
+    MCPTool(
+        name="opsiq_sync_meta_ad_spend",
+        description=(
+            "Audits Shopify SKU stock levels against active Meta / TikTok ad sets. "
+            "Automatically pauses ad sets on sold-out products to stop burning ad spend, "
+            "and unpauses ad sets once inventory is restocked."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "oos_threshold": {
+                    "type": "integer",
+                    "description": "Stock threshold to consider an item sold out",
+                    "default": 0,
+                },
+                "auto_execute": {
+                    "type": "boolean",
+                    "description": "Whether to live execute ad set pauses",
+                    "default": True,
+                },
+            },
+        },
+    ),
 ]
 
 
@@ -248,5 +272,24 @@ async def execute_tool(name: str, arguments: Dict[str, Any]) -> Any:
                 }
                 for a in actions
             ]
+
+    elif name == "opsiq_sync_meta_ad_spend":
+        guardian = AdSpendGuardian()
+        async with async_session_factory() as session:
+            res = await session.execute(select(ShopifyProductSnapshot))
+            snapshots = res.scalars().all()
+            inventory_data = [
+                {
+                    "sku": s.sku or "",
+                    "inventory_quantity": s.total_inventory,
+                    "title": s.title or "",
+                }
+                for s in snapshots
+            ]
+        return await guardian.sync_inventory_to_ads(
+            inventory_items=inventory_data,
+            oos_threshold=int(arguments.get("oos_threshold", 0)),
+            auto_execute=bool(arguments.get("auto_execute", True)),
+        )
 
     raise ValueError(f"Unknown MCP tool: {name}")

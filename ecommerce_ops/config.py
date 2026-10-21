@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     GORGIAS_EMAIL: Optional[str] = None
     GORGIAS_API_KEY: Optional[SecretStr] = None
 
+    # Meta Marketing API (Ad-Spend Bleed Stopper)
+    META_ACCESS_TOKEN: Optional[SecretStr] = None
+    META_AD_ACCOUNT_ID: Optional[str] = None
+
     @model_validator(mode="after")
     def validate_production_settings(self):
         if self.ENV == Environment.PRODUCTION:

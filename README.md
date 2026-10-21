@@ -10,6 +10,7 @@
 [![App Bridge v4](https://img.shields.io/badge/Shopify_App_Bridge-v4_Session_Tokens-5c6ac4.svg)](https://shopify.dev/docs/api/app-bridge)
 [![Klaviyo JSON:API](https://img.shields.io/badge/Klaviyo-2024--02--15_Verified-000000.svg?logo=klaviyo&logoColor=white)](https://developers.klaviyo.com)
 [![Gorgias REST](https://img.shields.io/badge/Gorgias-Helpdesk_Bridge-FF544A.svg)](https://gorgias.com)
+[![Meta Graph API](https://img.shields.io/badge/Meta_Ads-v19.0_Auto--Pause-0081FB.svg?logo=meta&logoColor=white)](https://developers.facebook.com/docs/marketing-apis/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2_Supervisor-1437EB.svg)](https://langchain-ai.github.io/langgraph)
 [![Next.js 14](https://img.shields.io/badge/Next.js-14_App_Router-000000.svg?logo=next.js&logoColor=white)](https://nextjs.org)
@@ -187,6 +188,12 @@ OpsIQ solves this with an ironclad **Defense-in-Depth Architecture**:
   ```
 - **Example Natural Language Prompt:**  
   *“Claude, check OpsIQ orders from today. If any high-risk orders exist, place a 3PL fulfillment hold on ShipBob, and report our net preserved margin.”*
+
+### 7. 🔥 Ad-Spend Bleed Stopper (Meta / TikTok Ads Auto-Pause Guardian)
+- **Stop Burning Ad Budget on Out-of-Stock SKUs:** When a bestseller sells out, marketing agencies often take 24–48 hours to notice, burning \$1,500–\$5,000+ driving paid traffic to "Sold Out" pages with 0% conversion.
+- **Sub-Second Inventory-to-Ad Sync:** OpsIQ continuously monitors SKU stock levels against active Meta Ad Sets (via Graph API v19.0+). When stock reaches 0, the ad set is **instantly paused**.
+- **Auto-Reactivation on Restock:** As soon as inventory is replenished via purchase order or return, OpsIQ automatically reactivates the ad set so your sales momentum never stops.
+- **Avoided Spend Counter:** Real-time metrics show exactly how many daily advertising dollars were saved during the out-of-stock window.
 
 ---
 
