@@ -6,6 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-4F46E5.svg)](LICENSE)
 [![Shopify API: 2024-01+](https://img.shields.io/badge/Shopify-Built_for_Shopify_Compliant-96bf48.svg?logo=shopify&logoColor=white)](https://shopify.dev)
+[![Model Context Protocol](https://img.shields.io/badge/Anthropic_MCP-Native_E--Commerce_Server-D97706.svg?logo=anthropic&logoColor=white)](https://modelcontextprotocol.io)
 [![App Bridge v4](https://img.shields.io/badge/Shopify_App_Bridge-v4_Session_Tokens-5c6ac4.svg)](https://shopify.dev/docs/api/app-bridge)
 [![Klaviyo JSON:API](https://img.shields.io/badge/Klaviyo-2024--02--15_Verified-000000.svg?logo=klaviyo&logoColor=white)](https://developers.klaviyo.com)
 [![Gorgias REST](https://img.shields.io/badge/Gorgias-Helpdesk_Bridge-FF544A.svg)](https://gorgias.com)
@@ -165,6 +166,27 @@ OpsIQ solves this with an ironclad **Defense-in-Depth Architecture**:
 ### 5. Bi-Directional Klaviyo & Gorgias Bridges
 - **Klaviyo Modern JSON:API (2024-02-15):** Dispatches custom event payloads (`OpsIQ Cart High Intent Recovered`, `OpsIQ Order Swap Recommended`) with exact tokenization and 1-click confirmation links.
 - **Gorgias Helpdesk Bridge:** Auto-creates priority customer support tickets with internal triage notes, sentiment tags, and auto-routed agent escalation.
+
+### 6. 🤖 The World's First E-Commerce Model Context Protocol (MCP) Server
+- **Control Your Store from Claude Desktop or Cursor:** OpsIQ exposes an official Anthropic MCP Server (`ecommerce_ops/mcp/`) that lets founders and ops teams command their store via natural conversation.
+- **8 Native Tools Exposed:** Assess order fraud, trigger 3PL fulfillment holds, evaluate return unit economics, calculate preserved margin, and audit store readiness.
+- **Claude Desktop Configuration (`claude_desktop_config.json`):**
+  ```json
+  {
+    "mcpServers": {
+      "opsiq": {
+        "command": "python",
+        "args": ["-m", "ecommerce_ops.mcp.cli", "--transport", "stdio"],
+        "env": {
+          "SHOPIFY_SHOP_DOMAIN": "your-brand.myshopify.com",
+          "SHOPIFY_ACCESS_TOKEN": "shpat_your_token"
+        }
+      }
+    }
+  }
+  ```
+- **Example Natural Language Prompt:**  
+  *“Claude, check OpsIQ orders from today. If any high-risk orders exist, place a 3PL fulfillment hold on ShipBob, and report our net preserved margin.”*
 
 ---
 
