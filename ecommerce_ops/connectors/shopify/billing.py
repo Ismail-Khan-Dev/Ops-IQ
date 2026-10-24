@@ -50,6 +50,8 @@ TIER_PLANS = {
     },
 }
 
+SHOPIFY_SUBSCRIPTION_PLANS = TIER_PLANS
+
 
 class ShopifyBillingManager:
     """Manages recurring application charges for Shopify merchants."""

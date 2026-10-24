@@ -46,7 +46,7 @@ class KlaviyoClient:
         self.base_url = base_url.rstrip("/")
         self.revision = revision
         self.timeout = timeout
-        self._circuit_breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=30.0)
+        self._circuit_breaker = CircuitBreaker(name="klaviyo", failure_threshold=5, recovery_timeout=30.0)
         self._client: Optional[httpx.AsyncClient] = None
 
     @property

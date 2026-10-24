@@ -125,6 +125,8 @@ async def test_live_margin_widget():
 
 def test_api_wardrobing_evaluate(test_client):
     admin_user = User(
+        id="usr_admin_1",
+        email="admin@opsiq.internal",
         username="admin",
         role=Role.ADMIN,
         permissions=["observability:view"],
@@ -143,7 +145,7 @@ def test_api_wardrobing_evaluate(test_client):
                 },
                 "historical_return_rate": 0.25,
             },
-            headers={"Authorization": "Bearer dummy_test_token"},
+            headers={"Authorization": "Bearer opsiq-dev-key-2024"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -153,6 +155,8 @@ def test_api_wardrobing_evaluate(test_client):
 
 def test_api_up_exchange_negotiate(test_client):
     admin_user = User(
+        id="usr_admin_1",
+        email="admin@opsiq.internal",
         username="admin",
         role=Role.ADMIN,
         permissions=["observability:view"],
@@ -166,7 +170,7 @@ def test_api_up_exchange_negotiate(test_client):
                 "category": "apparel",
                 "return_reason": "color_not_as_expected",
             },
-            headers={"Authorization": "Bearer dummy_test_token"},
+            headers={"Authorization": "Bearer opsiq-dev-key-2024"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -175,6 +179,8 @@ def test_api_up_exchange_negotiate(test_client):
 
 def test_api_live_margin_widget(test_client):
     admin_user = User(
+        id="usr_admin_1",
+        email="admin@opsiq.internal",
         username="admin",
         role=Role.ADMIN,
         permissions=["observability:view"],
@@ -182,7 +188,7 @@ def test_api_live_margin_widget(test_client):
     with patch("ecommerce_ops.security.auth.get_current_user", return_value=admin_user):
         resp = test_client.get(
             "/api/v1/roi/live-widget",
-            headers={"Authorization": "Bearer dummy_test_token"},
+            headers={"Authorization": "Bearer opsiq-dev-key-2024"},
         )
         assert resp.status_code == 200
         data = resp.json()

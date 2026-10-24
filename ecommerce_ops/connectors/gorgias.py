@@ -51,7 +51,7 @@ class GorgiasClient:
         self.api_key = api_key
         self.timeout = timeout
         self.base_url = f"https://{domain}/api" if domain else ""
-        self._circuit_breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=30.0)
+        self._circuit_breaker = CircuitBreaker(name="gorgias", failure_threshold=5, recovery_timeout=30.0)
         self._client: Optional[httpx.AsyncClient] = None
 
     @property

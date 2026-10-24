@@ -47,7 +47,7 @@ class MetaAdsClient:
         self.account_id = account_id.replace("act_", "") if account_id else None
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self._circuit_breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=30.0)
+        self._circuit_breaker = CircuitBreaker(name="meta_ads", failure_threshold=5, recovery_timeout=30.0)
         self._client: Optional[httpx.AsyncClient] = None
 
     @property

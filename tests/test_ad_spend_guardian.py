@@ -130,6 +130,8 @@ def test_ad_spend_saved_summary():
 
 def test_api_sync_inventory_with_meta_ads(test_client):
     admin_user = User(
+        id="usr_admin_1",
+        email="admin@opsiq.internal",
         username="admin",
         role=Role.ADMIN,
         permissions=["shopify:configure"],
@@ -150,7 +152,7 @@ def test_api_sync_inventory_with_meta_ads(test_client):
                 "oos_threshold": 0,
                 "auto_execute": True,
             },
-            headers={"Authorization": "Bearer dummy_test_token"},
+            headers={"Authorization": "Bearer opsiq-dev-key-2024"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -159,6 +161,8 @@ def test_api_sync_inventory_with_meta_ads(test_client):
 
 def test_api_get_ad_spend_saved_metrics(test_client):
     admin_user = User(
+        id="usr_admin_1",
+        email="admin@opsiq.internal",
         username="admin",
         role=Role.ADMIN,
         permissions=["observability:view"],
@@ -174,7 +178,7 @@ def test_api_get_ad_spend_saved_metrics(test_client):
 
         resp = test_client.get(
             "/api/v1/marketing/meta/saved-spend",
-            headers={"Authorization": "Bearer dummy_test_token"},
+            headers={"Authorization": "Bearer opsiq-dev-key-2024"},
         )
         assert resp.status_code == 200
         data = resp.json()
