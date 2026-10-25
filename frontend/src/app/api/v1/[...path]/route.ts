@@ -37,6 +37,11 @@ const V1_RESOURCES = new Set([
   "security",
   "demo",
   "version",
+  "marketing",
+  "roi",
+  "integrations",
+  "slack",
+  "onboarding",
 ])
 
 /**
