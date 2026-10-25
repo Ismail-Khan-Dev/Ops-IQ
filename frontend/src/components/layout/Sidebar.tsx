@@ -33,6 +33,7 @@ const navSections = [
   {
     label: null,
     items: [
+      { href: "/margin-guardian", label: "Margin Guardian", icon: Zap },
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
       { href: "/shopify", label: "Shopify", icon: Store },
     ],
