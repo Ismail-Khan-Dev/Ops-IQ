@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "opsiq": {
+      "command": "C:\\Users\\HP\\Downloads\\ecom-ops-automation-system-main\\ecom-ops-automation-system-main\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "ecommerce_ops.mcp.cli"
+      ],
+      "env": {
+        "PYTHONPATH": "C:\\Users\\HP\\Downloads\\ecom-ops-automation-system-main\\ecom-ops-automation-system-main",
+        "API_KEY": "opsiq-dev-key-2024",
+        "ENV": "development",
+        "DATABASE_URL": "sqlite+aiosqlite:///C:/Users/HP/Downloads/ecom-ops-automation-system-main/ecom-ops-automation-system-main/opsiq_dev.db"
+      }
+    }
+  }
+}

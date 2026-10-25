@@ -121,18 +121,15 @@ class MCPServer:
         )
 
     async def run_stdio(self):
-        """Runs the MCP server over standard input/output (stdio)."""
+        """Runs the MCP server over standard input/output (stdio) cross-platform."""
         logger.info("OpsIQ MCP Server listening on stdio...")
-        loop = asyncio.get_event_loop()
-        reader = asyncio.StreamReader()
-        protocol = asyncio.StreamReaderProtocol(reader)
-        await loop.connect_read_pipe(lambda: protocol, sys.stdin)
 
         while True:
-            line = await reader.readline()
+            # sys.stdin.readline in worker thread prevents Windows IOCP handle errors ([WinError 6])
+            line = await asyncio.to_thread(sys.stdin.readline)
             if not line:
                 break
-            raw_msg = line.decode("utf-8").strip()
+            raw_msg = line.strip()
             if not raw_msg:
                 continue
 

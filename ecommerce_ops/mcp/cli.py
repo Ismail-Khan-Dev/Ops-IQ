@@ -8,7 +8,12 @@ Usage:
 import argparse
 import asyncio
 import json
+import logging
 import sys
+
+# Configure logging to stderr immediately BEFORE importing ecommerce_ops modules
+# so that any module initialization logs go to stderr and stdout remains pure JSON-RPC
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
 from ecommerce_ops.mcp.server import MCPServer
 from ecommerce_ops.mcp.tools import TOOLS
