@@ -45,7 +45,9 @@ def test_shopify_task_names_include_all_handlers():
     assert "shopify.order_created" in SHOPIFY_TASK_NAMES
     assert "shopify.inventory_low" in SHOPIFY_TASK_NAMES
     assert "shopify.inventory_changed" in SHOPIFY_TASK_NAMES
-    assert len(SHOPIFY_TASK_NAMES) == 11
+    assert "shopify.customers_redact" in SHOPIFY_TASK_NAMES
+    assert "shopify.shop_redact" in SHOPIFY_TASK_NAMES
+    assert len(SHOPIFY_TASK_NAMES) == 15
 
 
 @pytest.mark.asyncio

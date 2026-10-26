@@ -17,7 +17,7 @@ from ecommerce_ops.connectors.shopify.handlers.order_handlers import handle_orde
 from ecommerce_ops.connectors.shopify.webhooks import WebhookEvent
 from ecommerce_ops.models import ApprovalAction
 from ecommerce_ops.pipeline.runner import execute_shop_action
-from ecommerce_ops.security.models import Role, User
+from ecommerce_ops.security.models import Permission, Role, User
 
 
 @pytest.fixture
@@ -142,12 +142,13 @@ async def test_release_order_fulfillments(mock_shopify_client):
 async def test_execute_shop_action_fraud_hold():
     action = ApprovalAction(
         id="act_fraud_1",
-        run_id="run_1",
         agent="FraudAgent",
         action_type="fraud_hold",
         confidence_score=0.95,
         risk_level="high",
         payload={"order_id": "999888", "fraud_score": 88},
+        evidence=[],
+        impact={},
         shadow_mode=False,
     )
 
@@ -173,12 +174,13 @@ async def test_execute_shop_action_fraud_hold():
 async def test_execute_shop_action_release_fraud_hold():
     action = ApprovalAction(
         id="act_rel_1",
-        run_id="run_1",
         agent="FraudAgent",
         action_type="release_fraud_hold",
         confidence_score=0.90,
         risk_level="medium",
         payload={"order_id": "999888"},
+        evidence=[],
+        impact={},
         shadow_mode=False,
     )
 
@@ -295,13 +297,20 @@ async def test_order_created_webhook_invokes_interceptor():
 # ── 5. REST Endpoints for 3PL Fulfillment Control ───────────────────
 
 
+from pydantic import SecretStr
+
 def test_api_fulfillment_orders_endpoint(test_client):
     admin_user = User(
-        username="admin",
+        id="usr_admin_1",
+        email="admin@example.com",
+        name="Admin",
         role=Role.ADMIN,
-        permissions=["shopify:view", "shopify:configure"],
+        permissions={Permission.SHOPIFY_VIEW, Permission.SHOPIFY_CONFIGURE},
     )
-    with patch("ecommerce_ops.security.auth.get_current_user", return_value=admin_user), \
+    with patch("ecommerce_ops.security.auth.AuthenticationMiddleware._matches_configured_key", return_value=True), \
+         patch("ecommerce_ops.security.auth.get_authenticated_user", return_value=admin_user), \
+         patch("ecommerce_ops.config.settings.SHOPIFY_SHOP_DOMAIN", "brand-test.myshopify.com"), \
+         patch("ecommerce_ops.config.settings.SHOPIFY_ACCESS_TOKEN", SecretStr("test_token")), \
          patch("ecommerce_ops.connectors.shopify.client.ShopifyClient.get_fulfillment_orders", new_callable=AsyncMock) as mock_get_fo:
 
         mock_get_fo.return_value = {
@@ -319,11 +328,16 @@ def test_api_fulfillment_orders_endpoint(test_client):
 
 def test_api_hold_and_release_endpoints(test_client):
     admin_user = User(
-        username="admin",
+        id="usr_admin_1",
+        email="admin@example.com",
+        name="Admin",
         role=Role.ADMIN,
-        permissions=["shopify:view", "shopify:configure"],
+        permissions={Permission.SHOPIFY_VIEW, Permission.SHOPIFY_CONFIGURE},
     )
-    with patch("ecommerce_ops.security.auth.get_current_user", return_value=admin_user), \
+    with patch("ecommerce_ops.security.auth.AuthenticationMiddleware._matches_configured_key", return_value=True), \
+         patch("ecommerce_ops.security.auth.get_authenticated_user", return_value=admin_user), \
+         patch("ecommerce_ops.config.settings.SHOPIFY_SHOP_DOMAIN", "brand-test.myshopify.com"), \
+         patch("ecommerce_ops.config.settings.SHOPIFY_ACCESS_TOKEN", SecretStr("test_token")), \
          patch("ecommerce_ops.connectors.shopify.client.ShopifyClient.get_order", new_callable=AsyncMock) as mock_get_order, \
          patch("ecommerce_ops.connectors.shopify.client.ShopifyClient.update_order", new_callable=AsyncMock) as mock_update_order, \
          patch("ecommerce_ops.connectors.shopify.client.ShopifyClient.hold_order_fulfillments", new_callable=AsyncMock) as mock_hold_fo, \

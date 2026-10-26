@@ -14,7 +14,7 @@ from ecommerce_ops.connectors.gorgias import GorgiasClient
 from ecommerce_ops.connectors.klaviyo import KlaviyoClient
 from ecommerce_ops.models import ApprovalAction
 from ecommerce_ops.pipeline.runner import execute_shop_action
-from ecommerce_ops.security.models import Role, User
+from ecommerce_ops.security.models import Permission, Role, User
 
 
 @pytest.fixture
@@ -162,7 +162,6 @@ async def test_gorgias_create_ticket():
 async def test_execute_shop_action_cart_recovery_with_klaviyo():
     action = ApprovalAction(
         id="act_cart_rec_1",
-        run_id="run_c1",
         agent="AbandonedCartAgent",
         action_type="cart_recovery",
         confidence_score=0.88,
@@ -176,6 +175,8 @@ async def test_execute_shop_action_cart_recovery_with_klaviyo():
             "strategy": "discount_urgency",
             "checkout_url": "https://brand.com/checkouts/abc",
         },
+        evidence=[],
+        impact={},
         shadow_mode=False,
     )
 
@@ -204,7 +205,6 @@ async def test_execute_shop_action_cart_recovery_with_klaviyo():
 async def test_execute_shop_action_support_response_with_gorgias():
     action = ApprovalAction(
         id="act_support_rec_1",
-        run_id="run_s1",
         agent="CustomerSupportAgent",
         action_type="support_response",
         confidence_score=0.91,
@@ -216,6 +216,8 @@ async def test_execute_shop_action_support_response_with_gorgias():
             "sentiment": "negative",
             "urgency": "high",
         },
+        evidence=[],
+        impact={},
         shadow_mode=False,
     )
 
@@ -241,11 +243,14 @@ async def test_execute_shop_action_support_response_with_gorgias():
 
 def test_api_ecosystem_status(test_client):
     admin_user = User(
-        username="admin",
+        id="usr_admin_1",
+        email="admin@example.com",
+        name="Admin",
         role=Role.ADMIN,
-        permissions=["integrations:manage"],
+        permissions={Permission.INTEGRATIONS_MANAGE},
     )
-    with patch("ecommerce_ops.security.auth.get_current_user", return_value=admin_user):
+    with patch("ecommerce_ops.security.auth.AuthenticationMiddleware._matches_configured_key", return_value=True), \
+         patch("ecommerce_ops.security.auth.get_authenticated_user", return_value=admin_user):
         resp = test_client.get(
             "/api/v1/integrations/ecosystem-status",
             headers={"Authorization": "Bearer dummy_test_token"},
@@ -259,11 +264,14 @@ def test_api_ecosystem_status(test_client):
 
 def test_api_klaviyo_and_gorgias_test_routes(test_client):
     admin_user = User(
-        username="admin",
+        id="usr_admin_1",
+        email="admin@example.com",
+        name="Admin",
         role=Role.ADMIN,
-        permissions=["integrations:manage"],
+        permissions={Permission.INTEGRATIONS_MANAGE},
     )
-    with patch("ecommerce_ops.security.auth.get_current_user", return_value=admin_user), \
+    with patch("ecommerce_ops.security.auth.AuthenticationMiddleware._matches_configured_key", return_value=True), \
+         patch("ecommerce_ops.security.auth.get_authenticated_user", return_value=admin_user), \
          patch("ecommerce_ops.connectors.klaviyo.KlaviyoClient.trigger_cart_recovery", new_callable=AsyncMock) as mock_klaviyo, \
          patch("ecommerce_ops.connectors.gorgias.GorgiasClient.create_ticket", new_callable=AsyncMock) as mock_gorgias:
 

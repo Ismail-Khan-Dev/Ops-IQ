@@ -13,7 +13,7 @@ from ecommerce_ops.analytics.margin_preservation import MarginPreservationCalcul
 from ecommerce_ops.api.app import app
 from ecommerce_ops.models import ApprovalAction, async_session_factory
 from ecommerce_ops.pipeline.runner import execute_shop_action
-from ecommerce_ops.security.models import Role, User
+from ecommerce_ops.security.models import Permission, Role, User
 
 
 @pytest.fixture
@@ -191,7 +191,6 @@ async def test_smart_returns_agent_selects_keep_it_credit():
 async def test_execute_shop_action_order_swap():
     action = ApprovalAction(
         id="act_swap_1",
-        run_id="run_swap_1",
         agent="OrderSwapsAgent",
         action_type="order_swap",
         confidence_score=0.85,
@@ -205,6 +204,8 @@ async def test_execute_shop_action_order_swap():
             "preserved_margin": 54.0,
             "customer_email": "shopper@test.com",
         },
+        evidence=[],
+        impact={},
         shadow_mode=False,
     )
 
@@ -231,7 +232,6 @@ async def test_execute_shop_action_order_swap():
 async def test_execute_shop_action_return_risk_keep_it_credit():
     action = ApprovalAction(
         id="act_return_keep_1",
-        run_id="run_ret_1",
         agent="SmartReturnsAgent",
         action_type="return_risk_flag",
         confidence_score=0.80,
@@ -243,6 +243,8 @@ async def test_execute_shop_action_return_risk_keep_it_credit():
             "preserved_margin": 14.50,
             "reverse_costs_saved": 14.50,
         },
+        evidence=[],
+        impact={},
         shadow_mode=False,
     )
 
@@ -272,11 +274,14 @@ async def test_execute_shop_action_return_risk_keep_it_credit():
 
 def test_api_margin_preservation_summary(test_client):
     admin_user = User(
-        username="admin",
+        id="usr_admin_1",
+        email="admin@example.com",
+        name="Admin",
         role=Role.ADMIN,
-        permissions=["observability:view"],
+        permissions={Permission.OBSERVABILITY_VIEW},
     )
-    with patch("ecommerce_ops.security.auth.get_current_user", return_value=admin_user):
+    with patch("ecommerce_ops.security.auth.AuthenticationMiddleware._matches_configured_key", return_value=True), \
+         patch("ecommerce_ops.security.auth.get_authenticated_user", return_value=admin_user):
         resp = test_client.get(
             "/api/v1/roi/margin-preservation",
             headers={"Authorization": "Bearer dummy_test_token"},
@@ -290,11 +295,14 @@ def test_api_margin_preservation_summary(test_client):
 
 def test_api_return_evaluation_endpoint(test_client):
     admin_user = User(
-        username="admin",
+        id="usr_admin_1",
+        email="admin@example.com",
+        name="Admin",
         role=Role.ADMIN,
-        permissions=["observability:view"],
+        permissions={Permission.OBSERVABILITY_VIEW},
     )
-    with patch("ecommerce_ops.security.auth.get_current_user", return_value=admin_user):
+    with patch("ecommerce_ops.security.auth.AuthenticationMiddleware._matches_configured_key", return_value=True), \
+         patch("ecommerce_ops.security.auth.get_authenticated_user", return_value=admin_user):
         resp = test_client.post(
             "/api/v1/roi/returns/evaluate",
             json={
@@ -312,11 +320,14 @@ def test_api_return_evaluation_endpoint(test_client):
 
 def test_api_swap_evaluation_endpoint(test_client):
     admin_user = User(
-        username="admin",
+        id="usr_admin_1",
+        email="admin@example.com",
+        name="Admin",
         role=Role.ADMIN,
-        permissions=["observability:view"],
+        permissions={Permission.OBSERVABILITY_VIEW},
     )
-    with patch("ecommerce_ops.security.auth.get_current_user", return_value=admin_user):
+    with patch("ecommerce_ops.security.auth.AuthenticationMiddleware._matches_configured_key", return_value=True), \
+         patch("ecommerce_ops.security.auth.get_authenticated_user", return_value=admin_user):
         resp = test_client.post(
             "/api/v1/roi/swaps/evaluate",
             json={
