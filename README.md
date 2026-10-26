@@ -323,20 +323,37 @@ The stack will spin up 14 interconnected services:
 - **Prometheus Metrics**: `http://localhost:9090`
 - **Grafana Dashboards**: `http://localhost:3001` (admin / admin)
 
-### 4. Local Python Development
+### 4. Fast Local Evaluation & Zero-Config Setup (SQLite + Next.js)
+
+For rapid local testing and client Loom pitch demonstrations, OpsIQ runs out-of-the-box without Docker:
+
 ```bash
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# 1. Activate Python virtual environment and initialize local database
+.\.venv\Scripts\activate
+python scripts/init_local_db.py
+python scripts/seed_demo_analytics.py
 
-# Install dependencies
-pip install -r requirements.txt
+# 2. Start the FastAPI backend server (Port 8000)
+uvicorn ecommerce_ops.api.app:app --host 127.0.0.1 --port 8000
 
-# Run database migrations
-alembic upgrade head
+# 3. Start Next.js App Router frontend (Port 3000)
+cd frontend
+npm run dev
 
-# Start API server
-uvicorn ecommerce_ops.api.app:app --host 0.0.0.0 --port 8000 --reload
+# 4. Open http://localhost:3000/margin-guardian
+# Operator API Key for localhost login: opsiq-dev-key-2024
+```
+
+### 5. Native MCP Server (Claude Desktop & Cursor IDE)
+
+OpsIQ includes a native **Model Context Protocol (MCP)** server providing LLMs direct, tool-assisted access to Shopify fulfillment, inventory, and margin operations:
+
+```bash
+# Automated installer for Claude Desktop (%APPDATA%\Claude) and Cursor
+python scripts/setup_mcp.py --install
+
+# Run MCP stdio server manually:
+python -m ecommerce_ops.mcp.cli --stdio
 ```
 
 ---
